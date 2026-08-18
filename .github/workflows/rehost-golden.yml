@@ -1,0 +1,100 @@
+name: Rehost Golden Pipeline
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: Service to deploy
+        required: true
+        default: service-b
+        type: choice
+        options:
+          - service-a
+          - service-b
+          - service-c
+
+permissions:
+  contents: read
+
+env:
+  SERVICE: ${{ github.event.inputs.service || 'service-b' }}
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@832b4ceca13392cfda1d1b1955c7c0d880031167 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
+      - uses: aquasecurity/trivy-action@2b6d3a095f7e1483b2dd479bdb9e8c1a7a1d42f0 # 0.32.0
+        with:
+          scan-type: config
+          scan-ref: terraform
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  zizmor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
+      - uses: step-security/harden-runner@4e35a508c2d8142a8935c431c7c409c0d1c0c5e7 # v2.12.2
+        with:
+          egress-policy: audit
+      - name: Run zizmor
+        run: |
+          curl -fsSL https://github.com/zizmorcore/zizmor/releases/latest/download/zizmor-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./zizmor --persona auditor .
+
+  trivy-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
+      - name: Build image
+        run: docker build -f api/Dockerfile -t rehost-${{ env.SERVICE }}:ci .
+      - uses: aquasecurity/trivy-action@2b6d3a095f7e1483b2dd479bdb9e8c1a7a1d42f0 # 0.32.0
+        with:
+          scan-type: image
+          image-ref: rehost-${{ env.SERVICE }}:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  deploy:
+    needs: [gitleaks, trivy-config, zizmor, trivy-image]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
+      - uses: step-security/harden-runner@4e35a508c2d8142a8935c431c7c409c0d1c0c5e7 # v2.12.2
+        with:
+          egress-policy: audit
+      - name: Start LocalStack (in-runner)
+        uses: LocalStack/setup-localstack@e1c1a297dc819b097ff9499cb22a8caeb2b2473d # v0.2.3
+        with:
+          install-wrapper: true
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+      - name: Build and deploy
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+          AIVEN_MYSQL_HOST: ${{ secrets.AIVEN_MYSQL_HOST }}
+          AIVEN_MYSQL_PORT: ${{ secrets.AIVEN_MYSQL_PORT }}
+          AIVEN_MYSQL_USER: ${{ secrets.AIVEN_MYSQL_USER }}
+          AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
+        run: make up SERVICE=${{ env.SERVICE }}
+
+      # E2 — OIDC design deliverable (production path, commented; no infrastructure)
+      # - uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+      #   with:
+      #     role-to-assume: arn:aws:iam::123456789012:role/github-deploy
+      #     aws-region: us-east-1

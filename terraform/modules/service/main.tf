@@ -1,28 +1,120 @@
-# =============================================================================
-# modules/service — EC2 (Docker-backed) + nginx + SG + ALB   (GROUP-OWNED: build)
+# modules/service — EC2 (Docker-backed) + nginx + SG + ALB (GROUP-OWNED)
 #
-# Run the app image as a Docker-backed EC2 instance, front it with nginx, and
-# declare the load-balancer topology as IaC. Read "The four things that will
-# break first" in ASSIGNMENT.md before you start.
-#
-# Expected inputs (variables.tf): app_ami_id (the localstack-ec2/app:ami-<sha12>
-#   image CI tags), instance_type (default "t3.small"), secret_arn, db_endpoint,
-#   db_port (default 3306), app_port (default 3000).
-# Expected outputs (outputs.tf): instance_id.
-# =============================================================================
+# nginx carries real traffic and /readyz checks. ALB is declared as IaC
+# (graded + scanned) but LocalStack ELBv2 health checking is not relied on.
 
-# TODO: resource "aws_security_group" "app" — ingress 80 (+ app_port), egress.
-#   FIDELITY: on LocalStack only the default SG is honoured, and rules apply only
-#   at instance creation. `trivy config` flags 0.0.0.0/0 — scope it.
+data "aws_vpc" "default" {
+  default = true
+}
 
-# TODO: resource "aws_instance" "app" — ami = var.app_ami_id, instance_type,
-#   vpc_security_group_ids = [sg]. Pass the secret ARN + DB endpoint into
-#   user_data (templatefile) — NEVER the secret value; the app resolves it at
-#   runtime via Secrets Manager. A root_block_device needs an explicit
-#   volume_size on LocalStack.
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
 
-# TODO: declare the ALB topology as IaC (graded + scanned) even though nginx
-#   carries the real traffic: aws_lb + aws_lb_target_group + aws_lb_listener
-#   (you'll need data.aws_vpc.default + data.aws_subnets.default). Expect
-#   LocalStack ELBv2 quirks (e.g. the listener port round-trips oddly) — pin
-#   them with lifecycle { ignore_changes = [...] } and note them in FIDELITY.md.
+resource "aws_security_group" "app" {
+  name        = "${var.service_name}-app-sg"
+  description = "Ingress for nginx and app port on ${var.service_name}"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    description = "HTTP to nginx"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+  }
+
+  ingress {
+    description = "Direct app port (health/debug from host)"
+    from_port   = var.app_port
+    to_port     = var.app_port
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+  }
+
+  egress {
+    description = "All outbound (Aiven MySQL + LocalStack APIs)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name    = "${var.service_name}-app-sg"
+    Service = var.service_name
+  }
+}
+
+resource "aws_instance" "app" {
+  ami                         = var.app_ami_id
+  instance_type               = var.instance_type
+  vpc_security_group_ids      = [aws_security_group.app.id]
+  associate_public_ip_address = true
+
+  user_data = templatefile("${path.module}/templates/user-data.sh.tpl", {
+    service_name     = var.service_name
+    app_port         = var.app_port
+    secret_arn       = var.secret_arn
+    db_endpoint      = var.db_endpoint
+    db_port          = var.db_port
+    aws_endpoint_url = var.aws_endpoint_url
+    aws_region       = var.aws_region
+    app_image        = var.app_ami_id
+    nginx_conf = templatefile("${path.module}/templates/nginx.conf.tpl", {
+      app_port = var.app_port
+    })
+  })
+
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
+  tags = {
+    Name    = "${var.service_name}-app"
+    Service = var.service_name
+  }
+}
+
+resource "aws_lb" "app" {
+  name               = "${var.service_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  subnets            = data.aws_subnets.default.ids
+
+  tags = {
+    Name    = "${var.service_name}-alb"
+    Service = var.service_name
+  }
+}
+
+resource "aws_lb_target_group" "app" {
+  name     = "${var.service_name}-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = data.aws_vpc.default.id
+
+  tags = {
+    Name    = "${var.service_name}-tg"
+    Service = var.service_name
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.app.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+
+  lifecycle {
+    ignore_changes = [port, protocol]
+  }
+}

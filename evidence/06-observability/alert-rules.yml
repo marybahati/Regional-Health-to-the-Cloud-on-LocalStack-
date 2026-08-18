@@ -1,0 +1,31 @@
+groups:
+  - name: rehost-incidents
+    rules:
+      - alert: OPS2201HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 1m
+        labels:
+          incident: "2201"
+        annotations:
+          summary: "p95 latency high (rows examined / payload size)"
+      - alert: OPS2202PoolSaturation
+        expr: mysql_pool_waiting > 0 and mysql_threads_running < 2
+        for: 1m
+        labels:
+          incident: "2202"
+        annotations:
+          summary: "Connection pool saturated while DB is idle"
+      - alert: OPS2203LockWait
+        expr: mysql_global_status_innodb_row_lock_waits > 0
+        for: 30s
+        labels:
+          incident: "2203"
+        annotations:
+          summary: "InnoDB lock wait / ER_LOCK_WAIT_TIMEOUT"
+      - alert: OPS2204ProcessDown
+        expr: up{job="capacity-api"} == 0
+        for: 30s
+        labels:
+          incident: "2204"
+        annotations:
+          summary: "Process down or restart loop (memory vs 512m limit)"

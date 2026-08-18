@@ -1,0 +1,15 @@
+{
+  "name": "service-b",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --check server.js && node --check secrets.js && node --check database.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.758.0",
+    "express": "^4.21.2",
+    "mysql2": "^3.14.0"
+  }
+}

@@ -1,1 +1,15 @@
+node_modules/
+**/node_modules/
+.env
+.env.*
+!.env.example
+*.tfvars
+!*.tfvars.example
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
 .DS_Store
+evidence/**/*.png
+evidence/**/*.log
+!evidence/README.md

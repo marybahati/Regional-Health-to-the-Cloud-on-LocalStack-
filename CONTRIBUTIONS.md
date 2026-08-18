@@ -6,6 +6,6 @@ least two others**. This is graded from git.
 
 | Member | Authored (PR links) | Reviewed (PR links) |
 |---|---|---|
-|  |  |  |
+| Warga (service-b) | `modules/data` (this repo) | TBD — review `modules/service` + golden workflow |
 |  |  |  |
 |  |  |  |
