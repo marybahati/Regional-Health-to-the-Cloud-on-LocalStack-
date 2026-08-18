@@ -7,7 +7,10 @@ COPY api/package.json api/package-lock.json ./
 RUN npm ci --omit=dev
 
 FROM node:20.19.5-alpine3.22@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af020ffa39f0a770265435
-RUN apk add --no-cache nginx wget \
+RUN apk upgrade --no-cache \
+ && apk add --no-cache nginx wget \
+ && rm -rf /usr/local/lib/node_modules /opt/yarn* \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/corepack \
  && adduser -D -u 10001 app \
  && mkdir -p /var/cache/nginx /var/log/nginx /var/lib/nginx/tmp /tmp /etc/app /app \
  && chown -R app:app /var/cache/nginx /var/log/nginx /var/lib/nginx /tmp /etc/app /app /etc/nginx

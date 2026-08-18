@@ -8,6 +8,7 @@ NAME="${APP_CONTAINER_NAME:-service-a-e2e}"
 IMAGE="${IMAGE:-service-a:local}"
 PUBLISH="${APP_PUBLISH_PORT:-18080}"
 NETWORK="${APP_DOCKER_NETWORK:-observability_default}"
+LS_ENDPOINT="${APP_AWS_ENDPOINT_URL:-http://localstack:4566}"
 
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
@@ -27,7 +28,7 @@ docker run -d --name "$NAME" ${MEM} \
   -p "${PUBLISH}:8080" \
   -e SERVICE_NAME=service-a \
   -e DB_SECRET_ARN="$SECRET_ARN" \
-  -e AWS_ENDPOINT_URL=http://localstack:4566 \
+  -e AWS_ENDPOINT_URL="$LS_ENDPOINT" \
   -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
   -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
   -e AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION" \

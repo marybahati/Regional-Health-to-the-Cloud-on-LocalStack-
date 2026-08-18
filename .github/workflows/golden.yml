@@ -125,7 +125,8 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Image vulns (fail HIGH/CRITICAL)
         run: |
-          trivy image --exit-code 1 --severity HIGH,CRITICAL \
+          mkdir -p evidence/05-gates
+          trivy image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln \
             --format json --output evidence/05-gates/trivy-image.json \
             ${{ inputs.image_name }}:${{ github.sha }}
       - name: Tag as LocalStack AMI
@@ -198,9 +199,19 @@ jobs:
 
       - name: Bootstrap state + apply + seed + verify
         run: |
+          source ./scripts/ls-mode.sh
           source ./scripts/aiven-tf-env.sh
           ./scripts/bootstrap-state.sh
           tflocal -chdir=${{ inputs.terraform_root }} init -input=false
           tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)"
           ./scripts/seed-db.sh
+          # Hobby/freemium has no Docker-backed EC2. Run the same image and fetch the secret from SM.
+          LS_CID="$(docker ps -q --filter name=localstack | head -n1)"
+          test -n "$LS_CID"
+          NETWORK="$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}' "$LS_CID" | awk 'NF{print; exit}')"
+          LS_NAME="$(docker inspect -f '{{.Name}}' "$LS_CID" | sed 's#^/##')"
+          IMAGE="localstack-ec2/app:$(cat .ami-id)" \
+            APP_DOCKER_NETWORK="$NETWORK" \
+            APP_AWS_ENDPOINT_URL="http://${LS_NAME}:4566" \
+            ./scripts/run-app-local.sh
           ./scripts/verify.sh
