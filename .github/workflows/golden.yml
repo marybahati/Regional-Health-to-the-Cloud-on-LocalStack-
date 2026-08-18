@@ -189,6 +189,7 @@ jobs:
           curl -sSfL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o /tmp/tf.zip
           sudo unzip -o /tmp/tf.zip -d /usr/local/bin
           pipx install terraform-local
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Rebuild and tag AMI (image job artifacts are not the runner docker)
         run: |
@@ -199,12 +200,13 @@ jobs:
 
       - name: Bootstrap state + apply + seed + verify
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           source ./scripts/ls-mode.sh
           source ./scripts/aiven-tf-env.sh
           TF_STATE_BUCKET="rh-tfstate-${{ inputs.service }}" ./scripts/bootstrap-state.sh
           tflocal -chdir=${{ inputs.terraform_root }} init -input=false
           tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)"
-          ./scripts/seed-db.sh
+          ROOT="${{ inputs.terraform_root }}" ./scripts/seed-db.sh
           # Hobby/freemium has no Docker-backed EC2. Share the runner network so
           # the app uses the same 127.0.0.1:4566 endpoint as tflocal (LocalStack
           # binds loopback; host-gateway cannot reach it).

@@ -1,17 +1,9 @@
 #!/usr/bin/env bash
 # Community vs Pro LocalStack. Source this after .env.
 set -euo pipefail
-if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  . ./.env
-  set +a
-fi
 export S3_HOSTNAME="${S3_HOSTNAME:-localhost}"
 if [ -n "${LOCALSTACK_AUTH_TOKEN:-}" ]; then
   export ACTIVATE_PRO="${ACTIVATE_PRO:-1}"
-  # 2026 Hobby/freemium activates the image but does not include Docker-backed EC2 or ELBv2.
-  # Paid licenses can set TF_VAR_enable_compute=true.
   export TF_VAR_enable_compute="${TF_VAR_enable_compute:-false}"
 else
   export ACTIVATE_PRO="${ACTIVATE_PRO:-0}"
