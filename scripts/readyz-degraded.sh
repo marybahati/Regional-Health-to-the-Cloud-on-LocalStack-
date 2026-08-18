@@ -12,12 +12,26 @@ URL="$(scripts/instance-url.sh)"
 SECRET_ARN="$(tflocal -chdir="$ROOT" output -raw secret_arn)"
 GOOD="$(aws --endpoint-url "$ENDPOINT" secretsmanager get-secret-value --secret-id "$SECRET_ARN" --query SecretString --output text)"
 
+app_container() {
+  if [ -n "${APP_CONTAINER_NAME:-}" ]; then
+    echo "$APP_CONTAINER_NAME"
+    return
+  fi
+  n="$(docker ps --format '{{.Names}}' | awk '/localstack-ec2/ {print; exit}')"
+  if [ -z "$n" ]; then
+    n="$(docker ps --format '{{.Names}}' | awk '/service-a-e2e/ {print; exit}')"
+  fi
+  echo "$n"
+}
+
 reload_secret() {
   curl -sS -X POST "$URL/debug/reload-secret" || true
   echo
-  docker exec "${APP_CONTAINER_NAME:-service-a-e2e}" \
-    wget -q -O- --post-data='' http://127.0.0.1:3000/debug/reload-secret 2>/dev/null || true
-  echo
+  cid="$(app_container | head -n1)"
+  if [ -n "$cid" ]; then
+    docker exec "$cid" wget -q -O- --post-data='' http://127.0.0.1:3000/debug/reload-secret 2>/dev/null || true
+    echo
+  fi
 }
 
 {

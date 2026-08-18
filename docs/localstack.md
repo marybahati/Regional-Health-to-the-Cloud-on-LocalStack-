@@ -56,7 +56,9 @@ set +a
 
 `.env` is already in `.gitignore`.
 
-If the token is missing, this repo sets `ACTIVATE_PRO=0` and `TF_VAR_enable_compute=false`. Community LocalStack still provides Secrets Manager, S3, and DynamoDB. Docker-backed EC2 and ELBv2 stay off (they are Pro). `make up` then runs the app container via `scripts/run-app-local.sh` so `/debug/secret-source` still shows a Secrets Manager ARN.
+If the token is missing, this repo sets `ACTIVATE_PRO=0`. A current Hobby token **does** start LocalStack 2026, but Docker-backed EC2 and ELBv2 are **not** on the freemium license. `make up` still puts the Aiven envelope in Secrets Manager and runs the app with `scripts/run-app-local.sh`.
+
+Pin: `localstack/localstack-pro:2026.7.2` (newer tokens refuse the old `4.3` image).
 
 ## 3. Start LocalStack with Docker (this repo)
 

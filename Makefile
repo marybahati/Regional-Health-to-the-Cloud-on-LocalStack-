@@ -39,6 +39,8 @@ down: ## Destroy the stack and stop LocalStack.
 	$(COMPOSE_LS) down -v || true
 
 localstack-up: ## Start LocalStack (Hobby / in-process, not ephemeral).
+	set -a; [ -f .env ] && . ./.env; set +a
+	. scripts/ls-mode.sh
 	$(COMPOSE_LS) up -d
 	@echo "waiting for LocalStack..."
 	@for i in $$(seq 1 60); do \

@@ -32,14 +32,13 @@ Verified on the Linux Lima VM against LocalStack Hobby (in-runner / local docker
 - **How I detected it:** `docker ps` on the Linux host listed containers started from inside the instance; they were not in `docker exec <instance> docker ps` as children with a different runtime.
 - **What I'd verify on real AWS:** No docker.sock on the instance unless we explicitly install Docker; cgroup memory is the instance's, not a sibling container's.
 
-## Community LocalStack has no ELBv2
+## Hobby/freemium 2026 does not include Docker-backed EC2 or ELBv2
 
-- **What LocalStack did:** Without `LOCALSTACK_AUTH_TOKEN`, Pro activation failed (`License activation failed`). Community mode (`ACTIVATE_PRO=0`) left `elbv2` at HTTP 501 and Docker-backed EC2 as a mock (`couldn't find resource`). Secrets Manager, S3, and DynamoDB still worked.
-- **How I detected it:** `tflocal apply` created the secret, then failed on `aws_lb` / `aws_instance`. Compose logs showed “No credentials were found”.
-- **What I'd verify on real AWS:** ALB + instance launch succeed with a real AMI. In this lab, community mode sets `TF_VAR_enable_compute=false` and runs the same image via `scripts/run-app-local.sh` so `/debug/secret-source` still comes from Secrets Manager.
+- **What LocalStack did:** Auth token activated `localstack/localstack-pro:2026.7.2` as license type **freemium**. `elbv2` returned HTTP 501 (“not included within your LocalStack license”). `DescribeImages` for `localstack-ec2/app:ami-*` returned `InvalidAMIID.NotFound`; `RunInstances` created a mock xen instance, not a Docker container.
+- **How I detected it:** Compose logs: license activated; `tflocal apply` failed on `aws_lb` / `aws_instance`; `aws ec2 describe-images --filters Name=tag:ec2_vm_manager,Values=docker` was empty.
+- **What I'd verify on real AWS:** ALB + instance launch succeed with a real AMI. In this lab, `TF_VAR_enable_compute=false` and `scripts/run-app-local.sh` still fetch the Aiven envelope from Secrets Manager.
 
-
-- **What LocalStack did:** `aws_lb` + listener + target group applied. Listener port round-tripped oddly (hence `lifecycle { ignore_changes = [port] }`). There is no evidence of active health checking or unhealthy-target removal, so C4 is proven on **nginx** (`/nginx-health` 503 when `/readyz` fails), not on the ALB.
+## ELBv2 is IaC theatre here
 - **How I detected it:** Registered the instance, broke `/readyz`, and watched ALB target health stay stale while nginx returned 503 within seconds.
 - **What I'd verify on real AWS:** Target health transitions to `unhealthy` on `/readyz` 503 and the ALB stops sending traffic.
 
