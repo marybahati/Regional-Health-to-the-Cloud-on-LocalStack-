@@ -1,0 +1,217 @@
+name: Golden platform CI
+
+on:
+  workflow_call:
+    secrets:
+      LOCALSTACK_AUTH_TOKEN:
+        required: false
+      AIVEN_MYSQL_HOST:
+        required: false
+      AIVEN_MYSQL_PORT:
+        required: false
+      AIVEN_MYSQL_USER:
+        required: false
+      AIVEN_MYSQL_PASSWORD:
+        required: false
+      AIVEN_MYSQL_DB:
+        required: false
+      AIVEN_MYSQL_CA:
+        required: false
+    inputs:
+      service:
+        required: true
+        type: string
+      terraform_root:
+        required: true
+        type: string
+      dockerfile:
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+            | tar -xz -C /usr/local/bin gitleaks
+      - name: Scan full history
+        run: gitleaks detect --source . --report-path evidence/03-secrets/gitleaks.json --exit-code 1
+
+  trivy-config:
+    name: trivy config
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install trivy
+        run: |
+          # v0.58.1 git tag still exists; the GitHub *release* (binaries) was removed.
+          case "$(uname -m)" in aarch64|arm64) arch=ARM64 ;; *) arch=64bit ;; esac
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-${arch}.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" trivy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Terraform and Dockerfile misconfig
+        run: |
+          mkdir -p evidence/05-gates
+          trivy config --exit-code 1 --severity HIGH,CRITICAL \
+            --format json --output evidence/05-gates/trivy-config-terraform.json terraform
+          trivy config --exit-code 1 --severity HIGH,CRITICAL \
+            --format json --output evidence/05-gates/trivy-config-api.json api
+
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install zizmor
+        run: pipx install zizmor==1.5.2
+      - name: Scan workflows
+        run: zizmor --format plain .github | tee evidence/05-gates/zizmor.txt
+
+  image:
+    name: docker build + trivy image
+    runs-on: ubuntu-latest
+    needs: [gitleaks, trivy-config, zizmor]
+    permissions:
+      contents: read
+    outputs:
+      ami_id: ${{ steps.tag.outputs.ami_id }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Build
+        run: |
+          test -f api/package-lock.json
+          docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:${{ github.sha }} .
+      - name: Install trivy
+        run: |
+          case "$(uname -m)" in aarch64|arm64) arch=ARM64 ;; *) arch=64bit ;; esac
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-${arch}.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" trivy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Image vulns (fail HIGH/CRITICAL)
+        run: |
+          mkdir -p evidence/05-gates
+          trivy image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln \
+            --format json --output evidence/05-gates/trivy-image.json \
+            ${{ inputs.image_name }}:${{ github.sha }}
+      - name: Tag as LocalStack AMI
+        id: tag
+        run: |
+          SHA12=$(echo "${{ github.sha }}" | cut -c1-12)
+          AMI="ami-${SHA12}"
+          docker tag ${{ inputs.image_name }}:${{ github.sha }} localstack-ec2/app:${AMI}
+          echo "ami_id=${AMI}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: tflocal apply + verify
+    runs-on: ubuntu-latest
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    env:
+      LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localhost:4566
+      EC2_DOCKER_FLAGS: --memory=512m
+      AIVEN_MYSQL_HOST: ${{ secrets.AIVEN_MYSQL_HOST }}
+      AIVEN_MYSQL_PORT: ${{ secrets.AIVEN_MYSQL_PORT }}
+      AIVEN_MYSQL_USER: ${{ secrets.AIVEN_MYSQL_USER }}
+      AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
+      AIVEN_MYSQL_DB: ${{ secrets.AIVEN_MYSQL_DB }}
+      AIVEN_MYSQL_CA: ${{ secrets.AIVEN_MYSQL_CA }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # E2 — production path (commented). On real AWS this job assumes a role
+      # scoped to this repo's main branch. See iam/github-oidc-trust.json.
+      # - name: Configure AWS credentials (OIDC)
+      #   uses: aws-actions/configure-aws-credentials@b47578312673ae6fa5b5096b330d9fbac3d116df # v4.2.1
+      #   with:
+      #     role-to-assume: arn:aws:iam::000000000000:role/github-deploy-service-a
+      #     aws-region: eu-west-1
+      #     # role-session-name comes from the job; trust policy sub is
+      #     # repo:marybahati/Regional-Health-to-the-Cloud-on-LocalStack-:ref:refs/heads/main
+
+      - name: Start LocalStack in the runner
+        uses: LocalStack/setup-localstack@7c8a0cb3405bc58be4c8f763f812aa000bc46303 # v0.3.2
+        with:
+          image-tag: "2026.7.2"
+          install-awslocal: "true"
+          use-pro: "true"
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+          EC2_DOCKER_FLAGS: --memory=512m
+
+      - name: Install terraform + tflocal
+        run: |
+          curl -sSfL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o /tmp/tf.zip
+          sudo unzip -o /tmp/tf.zip -d /usr/local/bin
+          pipx install terraform-local
+
+      - name: Rebuild and tag AMI (image job artifacts are not the runner docker)
+        run: |
+          docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:ci .
+          AMI="${{ needs.image.outputs.ami_id }}"
+          docker tag ${{ inputs.image_name }}:ci localstack-ec2/app:${AMI}
+          echo "$AMI" > .ami-id
+
+      - name: Bootstrap state + apply + seed + verify
+        run: |
+          source ./scripts/ls-mode.sh
+          source ./scripts/aiven-tf-env.sh
+          ./scripts/bootstrap-state.sh
+          tflocal -chdir=${{ inputs.terraform_root }} init -input=false
+          tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)"
+          ./scripts/seed-db.sh
+          # Hobby/freemium has no Docker-backed EC2. Share the runner network so
+          # the app uses the same 127.0.0.1:4566 endpoint as tflocal (LocalStack
+          # binds loopback; host-gateway cannot reach it).
+          chmod +x scripts/*.sh
+          IMAGE="localstack-ec2/app:$(cat .ami-id)" \
+            APP_DOCKER_NETWORK=host \
+            APP_PUBLISH_PORT=8080 \
+            APP_AWS_ENDPOINT_URL="http://127.0.0.1:4566" \
+            bash scripts/run-app-local.sh
+          APP_PUBLISH_PORT=8080 bash scripts/verify.sh

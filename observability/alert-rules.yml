@@ -1,0 +1,48 @@
+groups:
+  - name: regional-health-incidents
+    rules:
+      - alert: OPS-2201
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (route, le) (rate(http_request_duration_seconds_bucket{service="service-a"}[2m]))
+          ) > 0.5
+          or
+          rate(mysql_rows_examined_total{service="service-a"}[2m]) > 100
+        for: 30s
+        labels:
+          severity: warning
+          incident: "2201"
+        annotations:
+          summary: "Service A p95 or rows-examined is high (2201)"
+          description: "Full-table search or oversized payload on {{ $labels.route }}."
+
+      - alert: OPS-2202
+        expr: mysql_pool_queued{service="service-a"} > 0 and mysql_pool_in_use{service="service-a"} > 0
+        for: 20s
+        labels:
+          severity: warning
+          incident: "2202"
+        annotations:
+          summary: "Connection pool saturated while work is held in the app (2202)"
+          description: "Pool waiters > 0. The DB can still be idle — the app is holding connections."
+
+      - alert: OPS-2203
+        expr: histogram_quantile(0.95, rate(mysql_lock_wait_seconds_bucket{service="service-a"}[2m])) > 2
+        for: 20s
+        labels:
+          severity: warning
+          incident: "2203"
+        annotations:
+          summary: "InnoDB lock wait (2203)"
+          description: "ER_LOCK_WAIT_TIMEOUT / long FOR UPDATE on patients."
+
+      - alert: OPS-2204
+        expr: up{job="capacity-api"} == 0 or process_resident_memory_bytes{service="service-a"} > 400000000
+        for: 15s
+        labels:
+          severity: critical
+          incident: "2204"
+        annotations:
+          summary: "Service A down or approaching the 512Mi cgroup (2204)"
+          description: "Most deterministic injection: kill the process so up==0. Unbounded /export trips RSS."

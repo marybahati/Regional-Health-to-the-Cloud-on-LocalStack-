@@ -1,31 +1,52 @@
-# Rehosting Capacity Lab — starter pack
+# Regional Health — Service A rehost (LocalStack + Aiven)
 
-This is a **starter pack, not a repo**. You complete the assignment **in your
-existing Assignment-1 repo** (the one with your `api/`, `load-tests/`,
-`monitoring/`, incidents, etc.). These files are starting points for the *new*
-rehost pieces — copy the ones you need into your repo and fill in the `TODO`s.
+**New here? Start at [docs/README.md](docs/README.md).** That folder is the beginner path: Linux vs VM, LocalStack, Aiven MySQL, GitHub secrets, first `make up`.
 
-## What's here
+This checkout is **Service A only**. Teammates rehost B and C on the same group modules.
 
-| File | What it is |
+## What changed from the original brief
+
+LocalStack Hobby does **not** include RDS or ECR. We do not pay for those.
+
+| Original brief | This repo |
 |---|---|
-| `ASSIGNMENT.md` | **The brief.** Read it first — especially "The four things that will break first". |
-| `terraform/modules/data/main.tf` | Stub for the RDS + Secrets Manager module (you build it). |
-| `terraform/modules/service/main.tf` | Stub for the EC2 + nginx + ALB module (you build it). |
-| `api/secrets.js` | Stub for resolving DB creds from Secrets Manager at boot. |
-| `evidence/README.md` | The exact evidence bundle you must produce. |
-| `FIDELITY.md` | Template — where the emulator lied to you (graded). |
-| `CONTRIBUTIONS.md` | Template — who authored/reviewed which module PR. |
+| RDS MySQL on LocalStack | [Aiven for MySQL](https://aiven.io/) (free, real MySQL + TLS) |
+| ECR | No registry. Image is built, scanned, tagged `localstack-ec2/app:ami-<sha12>` |
 
-## What's NOT here (you provide it)
+Terraform still writes the DB envelope to **Secrets Manager**. The app still calls `GetSecretValue` at boot. User-data still gets the **ARN only**.
 
-Your app and k6 scripts already live in your A1 repo. You also write your own
-`Makefile`, CI workflow (`.github/workflows/`), and observability wiring — the
-brief tells you exactly what each must do and what evidence proves it.
+## Machine: Linux is required
 
-## First moves
+LocalStack EC2 is unreachable from macOS Docker Desktop. Use native Linux, the Lima VM, or Codespaces. Details: [docs/setup-linux.md](docs/setup-linux.md) vs [docs/setup-vm.md](docs/setup-vm.md).
 
-1. Read `ASSIGNMENT.md` end to end.
-2. Sort your **free Hobby** LocalStack token and a **Linux Codespace** (see the
-   Environment section — don't fight a Mac).
-3. Copy the stubs into your repo, wire them up, and make the evidence real.
+## Right-sizing
+
+| Resource | Value | Why |
+|---|---|---|
+| Aiven MySQL | Free plan (1 GB, 76 connections) | 10,000 patients is a few MB |
+| EC2 instance type | `t3.small` (declared IaC; LocalStack does not enforce size) | Headroom for nginx + Node |
+| App cgroup | `--memory=512m` (`EC2_DOCKER_FLAGS`) | Makes 2204 OOM reproducible |
+
+## One command (on Linux, after Aiven + token)
+
+See [docs/first-run.md](docs/first-run.md).
+
+```bash
+set -a && source .env && set +a
+make up
+make verify
+```
+
+## OIDC (E2)
+
+Commented `configure-aws-credentials` is in `.github/workflows/golden.yml`. Trust policy: `iam/github-oidc-trust.json`.
+
+**What breaks if `sub` is `repo:<org>/*`?** Any repo in the org can assume the deploy role. Scoping to `repo:<org>/<repo>:ref:refs/heads/main` limits that to this repo’s `main` branch.
+
+## Layout
+
+- `docs/` — start here if you have never done this
+- `terraform/modules/data` — Secrets Manager envelope (Aiven details in, password never in git)
+- `terraform/modules/service` — EC2 + nginx user-data + ALB IaC
+- `terraform/environments/service-a` — Service A root
+- `api/` — Service A
