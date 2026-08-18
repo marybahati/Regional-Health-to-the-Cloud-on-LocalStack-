@@ -68,8 +68,12 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install trivy
         run: |
-          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.58.1/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.58.1
+          # v0.58.1 git tag still exists; the GitHub *release* (binaries) was removed.
+          case "$(uname -m)" in aarch64|arm64) arch=ARM64 ;; *) arch=64bit ;; esac
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-${arch}.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" trivy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Terraform and Dockerfile misconfig
         run: |
           trivy config --exit-code 1 --severity HIGH,CRITICAL \
@@ -111,8 +115,11 @@ jobs:
           docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:${{ github.sha }} .
       - name: Install trivy
         run: |
-          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.58.1/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.58.1
+          case "$(uname -m)" in aarch64|arm64) arch=ARM64 ;; *) arch=64bit ;; esac
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-${arch}.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" trivy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Image vulns (fail HIGH/CRITICAL)
         run: |
           trivy image --exit-code 1 --severity HIGH,CRITICAL \
