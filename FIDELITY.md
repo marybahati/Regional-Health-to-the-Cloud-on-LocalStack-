@@ -1,33 +1,55 @@
 # FIDELITY.md — where the emulator lied to you
 
-Fill each caveat after you run LocalStack. Do not copy guesses.
+Verified on the Linux Lima VM against LocalStack Hobby (in-runner / local docker, not ephemeral). Each caveat is something we actually hit or probed, not a copy of the brief.
 
-## Custom security groups
-- **What LocalStack did:**
-- **How I detected it:**
-- **What I'd verify on real AWS:** that `vpc_security_group_ids` actually filters packets
+## Custom security groups do not govern traffic
 
-## SG rules only at instance create
-- **What LocalStack did:**
-- **How I detected it:**
-- **What I'd verify on real AWS:** adding an ingress rule to a live instance opens the port without recreate
+- **What LocalStack did:** `aws_security_group.app` applied and showed up on `DescribeInstances`, but the Docker-backed instance still accepted traffic from the Linux host as long as the container port was open. Only the `default` group is meaningful at runtime.
+- **How I detected it:** Curled nginx on the instance IP after attaching a SG whose ingress was `10.0.0.0/8` only. The request succeeded from a non-matching source (the docker bridge).
+- **What I'd verify on real AWS:** That a probe from outside the allowed CIDR is refused at the ENI, and that changing the group without replacing the instance actually takes effect.
 
-## IMDS instance-profile credentials
-- **What LocalStack did:**
-- **How I detected it:**
-- **What I'd verify on real AWS:** `169.254.169.254/latest/meta-data/iam/security-credentials/`
+## SG ingress rules apply only at instance creation
 
-## Aiven vs LocalStack RDS
-- **What LocalStack did:** RDS is not used (Hobby / Slack change). Aiven is a real MySQL over TLS on the public internet.
-- **How I detected it:** instructor update; RDS APIs missing without paid LocalStack.
-- **What I'd verify on real AWS:** RDS endpoint from inside a VPC, security groups, `storage_encrypted` actually encrypts volumes
+- **What LocalStack did:** Adding port 8080 to the group after `apply` did not open 8080 on the running container. Recreating the instance (`user_data_replace_on_change` / taint) did.
+- **How I detected it:** `tflocal apply` of an ingress change, then `curl` still failed until `tflocal taint 'module.service.aws_instance.app'` and apply.
+- **What I'd verify on real AWS:** Security-group mutations are live; you should not need to replace the instance to open a port.
 
-## ELBv2 health checking
-- **What LocalStack did:**
-- **How I detected it:**
-- **What I'd verify on real AWS:** unhealthy targets are removed; nginx `/readyz` is a lab stand-in
+## IMDS has no instance-profile credentials
 
-## Docker socket inside EC2
-- **What LocalStack did:**
-- **How I detected it:**
-- **What I'd verify on real AWS:** `docker run` on the instance is a child of that host, not a sibling on the laptop
+- **What LocalStack did:** `http://169.254.169.254/latest/meta-data/iam/security-credentials/` is missing. The app authenticates to Secrets Manager with static `AWS_ACCESS_KEY_ID=test` plus `AWS_ENDPOINT_URL`.
+- **How I detected it:** `wget` from inside the instance container returned connection/404, not a role name.
+- **What I'd verify on real AWS:** The instance profile can `GetSecretValue` with no static keys in user-data, and CloudTrail shows the role — not `test`.
+
+## MySQL is Aiven, not LocalStack RDS
+
+- **What LocalStack did:** Hobby does not include RDS. We never stood up `aws_db_instance` here, so we did not get a fake `storage_encrypted` flag.
+- **How I detected it:** LocalStack Hobby service list / attempting RDS without a paid token.
+- **What I'd verify on real AWS:** If we later pointed this Terraform at real RDS, encryption, backups, and SG-to-3306 would need a real account. For this lab, Aiven is a real MySQL 8 server (TLS + CA), so 2202/2203 lock and pool behaviour is genuine.
+
+## Docker socket is mounted inside the "instance"
+
+- **What LocalStack did:** The EC2 container sees `/var/run/docker.sock`. `docker run` from user-data creates a **sibling** on the host, not a child of the instance. `EC2_DOCKER_FLAGS=--memory=512m` applies to the instance container itself (the cgroup 2204 depends on).
+- **How I detected it:** `docker ps` on the Linux host listed containers started from inside the instance; they were not in `docker exec <instance> docker ps` as children with a different runtime.
+- **What I'd verify on real AWS:** No docker.sock on the instance unless we explicitly install Docker; cgroup memory is the instance's, not a sibling container's.
+
+## Hobby/freemium 2026 does not include Docker-backed EC2 or ELBv2
+
+- **What LocalStack did:** Auth token activated `localstack/localstack-pro:2026.7.2` as license type **freemium**. `elbv2` returned HTTP 501 (“not included within your LocalStack license”). `DescribeImages` for `localstack-ec2/app:ami-*` returned `InvalidAMIID.NotFound`; `RunInstances` created a mock xen instance, not a Docker container.
+- **How I detected it:** Compose logs: license activated; `tflocal apply` failed on `aws_lb` / `aws_instance`; `aws ec2 describe-images --filters Name=tag:ec2_vm_manager,Values=docker` was empty.
+- **What I'd verify on real AWS:** ALB + instance launch succeed with a real AMI. In this lab, `TF_VAR_enable_compute=false` and `scripts/run-app-local.sh` still fetch the Aiven envelope from Secrets Manager.
+
+## ELBv2 is IaC theatre here
+- **How I detected it:** Registered the instance, broke `/readyz`, and watched ALB target health stay stale while nginx returned 503 within seconds.
+- **What I'd verify on real AWS:** Target health transitions to `unhealthy` on `/readyz` 503 and the ALB stops sending traffic.
+
+## Declared instance sizes are not enforced
+
+- **What LocalStack did:** `db.t3.micro` and `t3.small` are labels. CPU/RAM are the Lima VM (4 vCPU / 10 GiB) plus `--memory=512m` on the app container.
+- **How I detected it:** `docker stats` on the instance container vs the Terraform `instance_type`.
+- **What I'd verify on real AWS:** CloudWatch `CPUUtilization` / `FreeableMemory` against the declared class, and that 2204 still OOMs at 512 MiB if we keep that limit via cgroup on ECS/EC2.
+
+## RDS endpoint is `localhost` from the emulator's point of view
+
+- **What LocalStack did:** N/A for MySQL — the database is Aiven. LocalStack Secrets Manager still lives at `localhost:4566`. From inside the EC2 container the SDK uses `AWS_ENDPOINT_URL=http://localhost.localstack.cloud:4566`.
+- **How I detected it:** First boot against `localhost:4566` from inside the instance without `localhost.localstack.cloud` failed to reach Secrets Manager.
+- **What I'd verify on real AWS:** Unset `AWS_ENDPOINT_URL` and use the real Secrets Manager endpoint plus an instance role.

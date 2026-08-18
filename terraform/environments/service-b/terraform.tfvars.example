@@ -2,7 +2,8 @@
 # Prefer env vars: TF_VAR_db_host, TF_VAR_db_username, TF_VAR_db_password, TF_VAR_app_ami_id
 
 # db_host     = "your-project.aivencloud.com"
-# db_port     = 12345
+# db_port     = "12345"
 # db_username = "avnadmin"
 # db_password = "..."
-# app_ami_id  = "localstack-ec2/service-b:ami-abc123def456"
+# db_ca_cert  = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n"
+# app_ami_id  = "ami-abc123def456"

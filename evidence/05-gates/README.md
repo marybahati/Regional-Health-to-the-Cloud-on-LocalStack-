@@ -1,16 +1,21 @@
-# Gate evidence (C5)
+# Gates that actually block (C5)
 
-For each gate: a PR that went **red**, the scanner output, and the fix commit.
-A scanner that runs but never fails the build is theatre.
+Scan jobs run `permissions: contents: read` with **no secrets**. `step-security/harden-runner` is in egress-audit on every job. Actions are pinned to full SHAs; bumps come through Dependabot PRs.
 
-| Gate | Red PR | Scanner output | Fix commit | What this gate does NOT catch |
-|---|---|---|---|---|
-| gitleaks | TBD | `gitleaks.json` | TBD | Encrypted/obfuscated secrets, runtime-injected creds, secrets never committed |
-| trivy | TBD | `trivy-config.json`, `trivy-image.json` | TBD | Logic bugs, unsound IAM, vulns below HIGH if we fail only HIGH/CRITICAL |
-| zizmor | TBD | `zizmor.txt` | TBD | Malicious commits already at a pinned SHA, compromised maintainer |
+## What each gate does NOT catch
 
-Deliberate insecure changes to introduce:
+- **gitleaks:** Does not catch a secret that never enters git (pasted into an issue, stored in Terraform state, or injected at runtime). It also will not flag a well-formed random password that matches no rule.
+- **trivy:** Config scanning does not prove LocalStack *enforced* the control (`storage_encrypted` is a good example — see FIDELITY.md). Image scanning misses zero-days not yet in the DB and vulns in dependencies pulled at runtime, not baked into the image.
+- **zizmor:** Does not catch a malicious commit already at a pinned SHA, a compromised maintainer, or a runner that phones home after the workflow YAML looks clean. That is why harden-runner sits next to it.
 
-1. **gitleaks** — commit a fake `password=supersecret123`, let CI fail, revert.
-2. **trivy** — add `0.0.0.0/0` on the app SG (or `:latest` base image), let CI fail, revert.
-3. **zizmor** — use `actions/checkout@v4` (tag, not SHA), let CI fail, pin SHA.
+## Red PRs (introduce a bad change, let the gate fail, then fix)
+
+Replace these with the real GitHub PR links after the three deliberate-fail PRs are opened:
+
+| Gate | Insecure change | Red PR | Fix commit |
+|---|---|---|---|
+| gitleaks | committed fake AWS key `AKIA...` in a fixture | _pending_ | _pending_ |
+| trivy config | `0.0.0.0/0` on `aws_security_group.app` ingress | _pending_ | _pending_ |
+| zizmor | unpinned `actions/checkout@v4` (tag, not SHA) | _pending_ | _pending_ |
+
+Scanner outputs after a green run live beside this file: `trivy-image.json`, `trivy-config.json`, `zizmor.txt`.

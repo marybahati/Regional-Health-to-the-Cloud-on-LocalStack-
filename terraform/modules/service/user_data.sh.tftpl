@@ -1,0 +1,23 @@
+#!/bin/bash
+# Receives the secret ARN and DB endpoint. NEVER the password.
+# On LocalStack this file is world-readable under /var/lib/cloud/instances/<id>/.
+set -euxo pipefail
+
+mkdir -p /etc/app
+cat > /etc/app/runtime.env <<EOF
+SERVICE_NAME=${service_name}
+DB_SECRET_ARN=${secret_arn}
+DB_HOST=${db_endpoint}
+DB_PORT=${db_port}
+PORT=${app_port}
+BIND_HOST=127.0.0.1
+AWS_ENDPOINT_URL=${aws_endpoint_url}
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
+AWS_DEFAULT_REGION=us-east-1
+EOF
+chmod 0644 /etc/app/runtime.env
+
+# If the image entrypoint is waiting on this file, it will start nginx + node.
+touch /etc/app/runtime.env.ready
+echo "user-data wrote secret ARN ${secret_arn} (value never present)"

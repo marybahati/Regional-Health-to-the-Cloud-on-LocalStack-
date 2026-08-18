@@ -1,15 +1,16 @@
 {
-  "name": "service-b",
+  "name": "service-a",
   "version": "1.0.0",
   "private": true,
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --check server.js && node --check secrets.js && node --check database.js"
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.758.0",
+    "@aws-sdk/client-secrets-manager": "^3.699.0",
     "express": "^4.21.2",
-    "mysql2": "^3.14.0"
+    "mysql2": "^3.11.5",
+    "prom-client": "^15.1.3"
   }
 }

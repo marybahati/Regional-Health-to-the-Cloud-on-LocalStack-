@@ -1,0 +1,7 @@
+node_modules
+.git
+evidence
+lima
+*.md
+.terraform
+._*
