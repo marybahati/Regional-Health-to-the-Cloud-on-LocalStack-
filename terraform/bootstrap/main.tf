@@ -21,6 +21,7 @@ provider "aws" {
   endpoints {
     s3       = "http://localhost:4566"
     dynamodb = "http://localhost:4566"
+    kms      = "http://localhost:4566"
   }
 }
 
@@ -50,12 +51,20 @@ resource "aws_s3_bucket_versioning" "state" {
   }
 }
 
+resource "aws_kms_key" "state" {
+  description             = "Terraform state bucket encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
   bucket = aws_s3_bucket.state.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.state.arn
     }
+    bucket_key_enabled = true
   }
 }
 
