@@ -205,10 +205,13 @@ jobs:
           tflocal -chdir=${{ inputs.terraform_root }} init -input=false
           tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)"
           ./scripts/seed-db.sh
-          # Hobby/freemium has no Docker-backed EC2. Reach LocalStack via the
-          # host port: the default bridge has no DNS for container names.
+          # Hobby/freemium has no Docker-backed EC2. Share the runner network so
+          # the app uses the same 127.0.0.1:4566 endpoint as tflocal (LocalStack
+          # binds loopback; host-gateway cannot reach it).
           chmod +x scripts/*.sh
           IMAGE="localstack-ec2/app:$(cat .ami-id)" \
-            APP_AWS_ENDPOINT_URL="http://host.docker.internal:4566" \
+            APP_DOCKER_NETWORK=host \
+            APP_PUBLISH_PORT=8080 \
+            APP_AWS_ENDPOINT_URL="http://127.0.0.1:4566" \
             bash scripts/run-app-local.sh
-          bash scripts/verify.sh
+          APP_PUBLISH_PORT=8080 bash scripts/verify.sh
