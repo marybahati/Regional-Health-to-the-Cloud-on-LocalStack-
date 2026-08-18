@@ -24,6 +24,7 @@ help: ## Show targets.
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 up: ## Stand the stack up from zero on a clean LocalStack (SERVICE=service-a|service-b).
+	set -a; [ -f .env ] && . ./.env; set +a
 	@. scripts/ls-mode.sh
 	@. scripts/aiven-tf-env.sh
 	$(MAKE) localstack-up

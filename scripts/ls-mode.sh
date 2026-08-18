@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Community vs Pro LocalStack. Source this after .env.
 set -euo pipefail
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
 export S3_HOSTNAME="${S3_HOSTNAME:-localhost}"
 if [ -n "${LOCALSTACK_AUTH_TOKEN:-}" ]; then
   export ACTIVATE_PRO="${ACTIVATE_PRO:-1}"
