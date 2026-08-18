@@ -205,14 +205,10 @@ jobs:
           tflocal -chdir=${{ inputs.terraform_root }} init -input=false
           tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)"
           ./scripts/seed-db.sh
-          # Hobby/freemium has no Docker-backed EC2. Run the same image and fetch the secret from SM.
-          LS_CID="$(docker ps -q --filter name=localstack | head -n1)"
-          test -n "$LS_CID"
-          NETWORK="$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}' "$LS_CID" | awk 'NF{print; exit}')"
-          LS_NAME="$(docker inspect -f '{{.Name}}' "$LS_CID" | sed 's#^/##')"
+          # Hobby/freemium has no Docker-backed EC2. Reach LocalStack via the
+          # host port: the default bridge has no DNS for container names.
           chmod +x scripts/*.sh
           IMAGE="localstack-ec2/app:$(cat .ami-id)" \
-            APP_DOCKER_NETWORK="$NETWORK" \
-            APP_AWS_ENDPOINT_URL="http://${LS_NAME}:4566" \
+            APP_AWS_ENDPOINT_URL="http://host.docker.internal:4566" \
             bash scripts/run-app-local.sh
           bash scripts/verify.sh

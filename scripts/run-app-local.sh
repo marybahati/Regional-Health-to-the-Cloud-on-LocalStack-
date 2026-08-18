@@ -22,9 +22,13 @@ docker network inspect "$NETWORK" >/dev/null 2>&1 || docker network create "$NET
 MEM="${EC2_DOCKER_FLAGS:---memory=512m}"
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
+# host-gateway: GitHub's default bridge has no container DNS, so LocalStack
+# must be reached via the published host port, not http://localstack-main:4566.
 # shellcheck disable=SC2086
 docker run -d --name "$NAME" ${MEM} \
   --network "$NETWORK" \
+  --add-host=host.docker.internal:host-gateway \
+  --add-host=localstack:host-gateway \
   -p "${PUBLISH}:8080" \
   -e SERVICE_NAME=service-a \
   -e DB_SECRET_ARN="$SECRET_ARN" \
@@ -44,6 +48,8 @@ for _ in $(seq 1 40); do
 done
 if [ "$ok" -ne 1 ]; then
   echo "app container did not become ready" >&2
+  curl -sS "http://127.0.0.1:${PUBLISH}/readyz" >&2 || true
+  echo >&2
   docker logs "$NAME" >&2 || true
   exit 1
 fi
