@@ -1,0 +1,2 @@
+# Lab-only: LocalStack ELBv2 does not collect access logs. Real AWS should enable them.
+AVD-AWS-0052

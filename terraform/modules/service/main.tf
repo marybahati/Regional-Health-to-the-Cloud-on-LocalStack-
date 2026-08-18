@@ -36,10 +36,34 @@ resource "aws_security_group" "app" {
   }
 
   egress {
-    description = "All outbound (Aiven MySQL + LocalStack APIs)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTPS (Aiven TLS, package indexes)"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "HTTP for apt during user-data bootstrap"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "MySQL to managed Aiven"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Aiven free-tier custom MySQL port"
+    from_port   = 18736
+    to_port     = 18736
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -72,6 +96,7 @@ resource "aws_instance" "app" {
   root_block_device {
     volume_size = 20
     volume_type = "gp3"
+    encrypted   = true
   }
 
   tags = {
@@ -81,10 +106,11 @@ resource "aws_instance" "app" {
 }
 
 resource "aws_lb" "app" {
-  name               = "${var.service_name}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  subnets            = data.aws_subnets.default.ids
+  name                       = "${var.service_name}-alb"
+  internal                   = false
+  load_balancer_type         = "application"
+  drop_invalid_header_fields = true
+  subnets                    = data.aws_subnets.default.ids
 
   tags = {
     Name    = "${var.service_name}-alb"

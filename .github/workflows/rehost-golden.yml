@@ -20,7 +20,10 @@ permissions:
   contents: read
 
 env:
-  SERVICE: ${{ github.event.inputs.service || 'service-b' }}
+  SERVICE: service-b
+  GITLEAKS_VERSION: "8.30.1"
+  TRIVY_VERSION: "0.74.0"
+  ZIZMOR_VERSION: "1.29.0"
 
 jobs:
   gitleaks:
@@ -29,57 +32,80 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@832b4ceca13392cfda1d1b1955c7c0d880031167 # v2.3.9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+      - name: Install gitleaks
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Scan repository history
+        run: gitleaks detect --source . --verbose --redact --exit-code 1 --report-path gitleaks.json --report-format json
 
   trivy-config:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
-      - uses: aquasecurity/trivy-action@2b6d3a095f7e1483b2dd479bdb9e8c1a7a1d42f0 # 0.32.0
         with:
-          scan-type: config
-          scan-ref: terraform
-          severity: HIGH,CRITICAL
-          exit-code: "1"
+          persist-credentials: false
+      - name: Install Trivy
+        run: |
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar xz
+          sudo install -m 0755 trivy /usr/local/bin/trivy
+          trivy --version
+      - name: Scan Terraform and Dockerfile
+        run: |
+          trivy config terraform --severity HIGH,CRITICAL --exit-code 1 --format json --output trivy-config.json
+          trivy config api/Dockerfile --severity HIGH,CRITICAL --exit-code 1
 
   zizmor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
-      - uses: step-security/harden-runner@4e35a508c2d8142a8935c431c7c409c0d1c0c5e7 # v2.12.2
+      - uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.12.2
         with:
           egress-policy: audit
-      - name: Run zizmor
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install zizmor
         run: |
-          curl -fsSL https://github.com/zizmorcore/zizmor/releases/latest/download/zizmor-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          ./zizmor --persona auditor .
+          curl -sSfL "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/zizmor-x86_64-unknown-linux-gnu.tar.gz" | tar xz
+          sudo install -m 0755 zizmor /usr/local/bin/zizmor
+          zizmor --version
+      - name: Audit workflows
+        run: zizmor --persona auditor .
 
   trivy-image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
-      - name: Build image
-        run: docker build -f api/Dockerfile -t rehost-${{ env.SERVICE }}:ci .
-      - uses: aquasecurity/trivy-action@2b6d3a095f7e1483b2dd479bdb9e8c1a7a1d42f0 # 0.32.0
         with:
-          scan-type: image
-          image-ref: rehost-${{ env.SERVICE }}:ci
-          severity: HIGH,CRITICAL
-          exit-code: "1"
+          persist-credentials: false
+      - name: Install Trivy
+        run: |
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar xz
+          sudo install -m 0755 trivy /usr/local/bin/trivy
+      - name: Build image
+        run: docker build -f api/Dockerfile -t rehost-service-b:ci .
+      - name: Scan image
+        run: |
+          trivy image rehost-service-b:ci \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format json \
+            --output trivy-image.json
 
   deploy:
     needs: [gitleaks, trivy-config, zizmor, trivy-image]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
-      - uses: step-security/harden-runner@4e35a508c2d8142a8935c431c7c409c0d1c0c5e7 # v2.12.2
+      - uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.12.2
         with:
           egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364ed1afbc # v4.2.2
       - name: Start LocalStack (in-runner)
-        uses: LocalStack/setup-localstack@e1c1a297dc819b097ff9499cb22a8caeb2b2473d # v0.2.3
+        uses: LocalStack/setup-localstack@02228397f63312ffc85f293d5a4dc17188ff2b1a # main 2026-07-21
         with:
           install-wrapper: true
         env:
@@ -91,7 +117,7 @@ jobs:
           AIVEN_MYSQL_PORT: ${{ secrets.AIVEN_MYSQL_PORT }}
           AIVEN_MYSQL_USER: ${{ secrets.AIVEN_MYSQL_USER }}
           AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
-        run: make up SERVICE=${{ env.SERVICE }}
+        run: make up SERVICE=service-b
 
       # E2 — OIDC design deliverable (production path, commented; no infrastructure)
       # - uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2

@@ -22,6 +22,4 @@ docker run -d --name ${service_name} --restart unless-stopped \
   -e DB_SECRET_ARN=${secret_arn} \
   -e AWS_ENDPOINT_URL=${aws_endpoint_url} \
   -e AWS_REGION=${aws_region} \
-  -e AWS_ACCESS_KEY_ID=test \
-  -e AWS_SECRET_ACCESS_KEY=test \
   ${app_image}
