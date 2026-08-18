@@ -1,8 +1,15 @@
-# Regional Health — Service A rehost (LocalStack + Aiven)
+# Regional Health — rehost (LocalStack + Aiven)
 
 **New here? Start at [docs/README.md](docs/README.md).** That folder is the beginner path: Linux vs VM, LocalStack, Aiven MySQL, GitHub secrets, first `make up`.
 
-This checkout is **Service A only**. Teammates rehost B and C on the same group modules.
+This repo hosts each teammate's rehost on the same group modules (`terraform/modules/data`, `terraform/modules/service`, the golden CI workflow). Pick your service with `SERVICE`, default `service-a`:
+
+```bash
+make SERVICE=service-c up
+```
+
+- Service A: `terraform/environments/service-a`, CI in [.github/workflows/rehost-service-a.yml](.github/workflows/rehost-service-a.yml)
+- Service C: `terraform/environments/service-c`, CI in [.github/workflows/rehost-service-c.yml](.github/workflows/rehost-service-c.yml)
 
 ## What changed from the original brief
 
@@ -33,8 +40,8 @@ See [docs/first-run.md](docs/first-run.md).
 
 ```bash
 set -a && source .env && set +a
-make up
-make verify
+make SERVICE=service-c up
+make SERVICE=service-c verify
 ```
 
 ## OIDC (E2)
@@ -49,4 +56,5 @@ Commented `configure-aws-credentials` is in `.github/workflows/golden.yml`. Trus
 - `terraform/modules/data` — Secrets Manager envelope (Aiven details in, password never in git)
 - `terraform/modules/service` — EC2 + nginx user-data + ALB IaC
 - `terraform/environments/service-a` — Service A root
-- `api/` — Service A
+- `terraform/environments/service-c` — Service C root
+- `api/` — shared app image used by every service root

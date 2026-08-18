@@ -157,6 +157,9 @@ jobs:
       AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
       AIVEN_MYSQL_DB: ${{ secrets.AIVEN_MYSQL_DB }}
       AIVEN_MYSQL_CA: ${{ secrets.AIVEN_MYSQL_CA }}
+      SERVICE: ${{ inputs.service }}
+      ROOT: ${{ inputs.terraform_root }}
+      TF_STATE_BUCKET: rh-tfstate-${{ inputs.service }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
@@ -210,6 +213,7 @@ jobs:
           # binds loopback; host-gateway cannot reach it).
           chmod +x scripts/*.sh
           IMAGE="localstack-ec2/app:$(cat .ami-id)" \
+            APP_CONTAINER_NAME="${{ inputs.service }}-e2e" \
             APP_DOCKER_NETWORK=host \
             APP_PUBLISH_PORT=8080 \
             APP_AWS_ENDPOINT_URL="http://127.0.0.1:4566" \

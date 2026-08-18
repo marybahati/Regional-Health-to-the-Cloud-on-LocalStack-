@@ -5,7 +5,8 @@ ENDPOINT="${AWS_ENDPOINT_URL:-http://localhost:4566}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
-ROOT="${ROOT:-terraform/environments/service-a}"
+SERVICE="${SERVICE:-service-a}"
+ROOT="${ROOT:-terraform/environments/$SERVICE}"
 OUT="${1:-evidence/04-health/readyz-degraded.txt}"
 mkdir -p "$(dirname "$OUT")"
 URL="$(scripts/instance-url.sh)"
@@ -19,7 +20,7 @@ app_container() {
   fi
   n="$(docker ps --format '{{.Names}}' | awk '/localstack-ec2/ {print; exit}')"
   if [ -z "$n" ]; then
-    n="$(docker ps --format '{{.Names}}' | awk '/service-a-e2e/ {print; exit}')"
+    n="$(docker ps --format '{{.Names}}' | awk -v s="$SERVICE-e2e" '$0 ~ s {print; exit}')"
   fi
   echo "$n"
 }
