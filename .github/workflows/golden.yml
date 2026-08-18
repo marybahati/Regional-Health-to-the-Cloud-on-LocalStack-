@@ -210,8 +210,9 @@ jobs:
           test -n "$LS_CID"
           NETWORK="$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}' "$LS_CID" | awk 'NF{print; exit}')"
           LS_NAME="$(docker inspect -f '{{.Name}}' "$LS_CID" | sed 's#^/##')"
+          chmod +x scripts/*.sh
           IMAGE="localstack-ec2/app:$(cat .ami-id)" \
             APP_DOCKER_NETWORK="$NETWORK" \
             APP_AWS_ENDPOINT_URL="http://${LS_NAME}:4566" \
-            ./scripts/run-app-local.sh
-          ./scripts/verify.sh
+            bash scripts/run-app-local.sh
+          bash scripts/verify.sh
