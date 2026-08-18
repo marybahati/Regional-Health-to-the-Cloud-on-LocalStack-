@@ -1,0 +1,43 @@
+=== baseline ===
+GET http://127.0.0.1:18080/readyz
+{"status":"ready","secret":{"arn":"arn:aws:secretsmanager:us-east-1:000000000000:secret:regional-health/service-a/db-NLgTyM","versionId":"30212311-620f-474b-9ff8-88ab7ea49556"},"pool":{"total":2,"free":2,"queued":0,"limit":10,"saturated":false}}
+HTTP 200
+GET http://127.0.0.1:18080/nginx-health
+upstream-ready
+
+HTTP 200
+
+=== break secret (rotate to wrong password) ===
+{"error":"Access denied for user 'avnadmin'@'102.204.91.100' (using password: YES)"}
+
+GET http://127.0.0.1:18080/readyz (expect 503)
+<html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+<hr><center>nginx/1.28.3</center>
+</body>
+</html>
+
+HTTP 503
+GET http://127.0.0.1:18080/nginx-health (expect 503 — nginx pulled upstream)
+<html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+<hr><center>nginx/1.28.3</center>
+</body>
+</html>
+
+HTTP 503
+
+=== restore secret ===
+{"arn":"arn:aws:secretsmanager:us-east-1:000000000000:secret:regional-health/service-a/db-NLgTyM","versionId":"53629d13-e3ad-4d38-beea-8310ca065011"}
+{"arn":"arn:aws:secretsmanager:us-east-1:000000000000:secret:regional-health/service-a/db-NLgTyM","versionId":"53629d13-e3ad-4d38-beea-8310ca065011"}
+GET http://127.0.0.1:18080/readyz (expect 200)
+{"status":"ready","secret":{"arn":"arn:aws:secretsmanager:us-east-1:000000000000:secret:regional-health/service-a/db-NLgTyM","versionId":"53629d13-e3ad-4d38-beea-8310ca065011"},"pool":{"total":2,"free":2,"queued":0,"limit":10,"saturated":false}}
+HTTP 200
+GET http://127.0.0.1:18080/nginx-health (expect 200)
+upstream-ready
+
+HTTP 200

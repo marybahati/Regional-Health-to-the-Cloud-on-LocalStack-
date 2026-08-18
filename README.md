@@ -1,76 +1,55 @@
 # Regional Health to the Cloud on LocalStack — group-5
 
-Group platform repo for Assignment 2. **Service B (Warga)** is the first individual rehost wired here; Mary and Sharon add `terraform/environments/service-a` and `service-c` on the same modules.
+**New here? Start at [docs/README.md](docs/README.md).** That folder is the beginner path: Linux vs VM, LocalStack, Aiven MySQL, GitHub secrets, first `make up`.
 
-**Due:** Wednesday 19 August 2026, 09:00 EAT
+This is the **group platform**. Service A is the first merged root. Service B (Warga) and Service C compose the same modules under `terraform/environments/`.
 
-## Slack updates (authoritative)
+## What changed from the original brief
 
-- **Database:** Aiven MySQL free tier — not LocalStack RDS
-- **Registry:** no ECR — image is built, scanned, and tagged `localstack-ec2/service-b:ami-<sha12>`
-- LocalStack runs **inside** the GitHub runner (in-runner). Do not use hosted/ephemeral instances.
+LocalStack Hobby does **not** include RDS or ECR. We do not pay for those.
 
-## What lives here
-
-| Path | Owner |
+| Original brief | This repo |
 |---|---|
-| `terraform/modules/data` | Group — Aiven creds → Secrets Manager |
-| `terraform/modules/service` | Group — EC2 + nginx + ALB IaC |
-| `terraform/environments/service-b` | Warga — individual root |
-| `api/` | Service B app: secrets, `/healthz`, `/readyz` |
-| `.github/workflows/rehost-golden.yml` | Golden pipeline |
-| `evidence/` | Graded artifacts |
+| RDS MySQL on LocalStack | [Aiven for MySQL](https://aiven.io/) (free, real MySQL + TLS) |
+| ECR | No registry. Image is built, scanned, tagged `localstack-ec2/app:ami-<sha12>` |
 
-## Prerequisites (personal — do not share)
+Terraform still writes the DB envelope to **Secrets Manager**. The app still calls `GetSecretValue` at boot. User-data still gets the **ARN only**.
 
-```bash
-export LOCALSTACK_AUTH_TOKEN="..."
-export AIVEN_MYSQL_HOST="..."
-export AIVEN_MYSQL_PORT="..."
-export AIVEN_MYSQL_USER="avnadmin"
-export AIVEN_MYSQL_PASSWORD="..."
-```
+## Machine: Linux is required
 
-Add the same names as GitHub Actions secrets.
+LocalStack EC2 is unreachable from macOS Docker Desktop. Use native Linux, the Lima VM, or Codespaces. Details: [docs/setup-linux.md](docs/setup-linux.md) vs [docs/setup-vm.md](docs/setup-vm.md).
 
 ## Right-sizing
 
 | Resource | Value | Why |
 |---|---|---|
-| EC2 | `t3.small` | nginx + Node app headroom; `t3.micro` is too tight |
-| DB | Aiven free MySQL 8.0 | real managed MySQL with TLS; RDS is not on Hobby |
-| App memory | `--memory=512m` | makes incident 2204 OOM reproducible |
-| Multi-AZ | n/a (Aiven free) | single instance; availability trade-off accepted for the lab |
+| Aiven MySQL | Free plan (1 GB, 76 connections) | 10,000 patients is a few MB |
+| EC2 instance type | `t3.small` (declared IaC; LocalStack does not enforce size) | Headroom for nginx + Node |
+| App cgroup | `--memory=512m` (`EC2_DOCKER_FLAGS`) | Makes 2204 OOM reproducible |
 
-## Commands
+## One command (on Linux, after Aiven + token)
+
+See [docs/first-run.md](docs/first-run.md).
 
 ```bash
-# One-time: S3 state + DynamoDB lock on LocalStack
-make bootstrap
-
-# Seed Aiven (once)
-mysql -h "$AIVEN_MYSQL_HOST" -P "$AIVEN_MYSQL_PORT" -u avnadmin -p \
-  --ssl-mode=REQUIRED < sql/schema.sql
-
-# Stand up Service B from zero
-make up
-
-# Grader check (must fail if any gate fails)
+set -a && source .env && set +a
+make up                          # Service A (default)
+make up SERVICE=service-b        # Service B
 make verify
 ```
 
-`make up` tags the image as `localstack-ec2/service-b:ami-<first-12-of-git-sha>` then runs `tflocal apply`.
+## OIDC (E2)
 
-## Secrets (C3)
+Commented `configure-aws-credentials` is in `.github/workflows/golden.yml`. Trust policy: `iam/github-oidc-trust.json`.
 
-User-data receives **ARN + LocalStack endpoint only**. The app calls `GetSecretValue` at boot using `AWS_ENDPOINT_URL`. There is no `if (isLocalStack)` branch.
+**What breaks if `sub` is `repo:<org>/*`?** Any repo in the org can assume the deploy role. Scoping to `repo:<org>/<repo>:ref:refs/heads/main` limits that to this repo’s `main` branch.
 
-## E2 — OIDC design
+## Layout
 
-The deploy job in `.github/workflows/rehost-golden.yml` has a commented `configure-aws-credentials` block. Trust policy: `docs/oidc-trust-policy.json`.
-
-**What breaks if `sub` is `repo:<org>/*`?** Any repository in that org — including a fork or a throwaway repo a compromised workflow can push to — can assume the deploy role. Scoping to `repo:<org>/<repo>:ref:refs/heads/main` limits assumption to this repo's main branch.
-
-## Group vs individual
-
-Each member: author ≥1 module PR, review ≥2 others. Record in `CONTRIBUTIONS.md`. Individual marks require **your** Aiven DB, LocalStack token, and Service B deploy — not a teammate's.
+- `docs/` — start here if you have never done this
+- `terraform/modules/data` — Secrets Manager envelope (Aiven details in, password never in git)
+- `terraform/modules/service` — EC2 + nginx user-data + ALB IaC
+- `terraform/environments/service-a` — Mary — Service A root
+- `terraform/environments/service-b` — Warga — Service B root
+- `api/` — shared Regional Health app (`/healthz`, `/readyz`, Secrets Manager at boot)
+- `.github/workflows/golden.yml` — reusable pipeline; `rehost-service-a.yml` / `rehost-service-b.yml` call it

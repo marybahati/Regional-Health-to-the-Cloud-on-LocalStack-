@@ -1,0 +1,27 @@
+services:
+  localstack:
+    image: localstack/localstack-pro:2026.7.2
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    env_file:
+      - ../.env
+    environment:
+      DEBUG: "0"
+      EC2_VM_MANAGER: docker
+      EC2_DOCKER_FLAGS: "--memory=512m --add-host=localhost.localstack.cloud:host-gateway"
+      AWS_DEFAULT_REGION: us-east-1
+      ENFORCE_IAM: "0"
+    extra_hosts:
+      - "localhost.localstack.cloud:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  localstack-data:

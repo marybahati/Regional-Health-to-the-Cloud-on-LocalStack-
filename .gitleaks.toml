@@ -1,0 +1,11 @@
+title = "gitleaks config"
+[allowlist]
+  description = "assignment evidence placeholders — not live credentials"
+  paths = [
+    '''evidence/''',
+    '''iam/''',
+    '''\.env$''',
+    '''\.env\.local$''',
+    '''.*\.pem$''',
+    '''ca\.pem''',
+  ]

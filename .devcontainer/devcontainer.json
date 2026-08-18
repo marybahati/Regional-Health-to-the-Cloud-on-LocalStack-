@@ -1,19 +1,20 @@
 {
-  "name": "Rehost Lab",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "name": "Regional Health Service A (LocalStack)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
-    },
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.12"
-    }
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
   },
-  "postCreateCommand": "pip install terraform-local && npm install --prefix api",
   "hostRequirements": {
     "cpus": 4,
     "memory": "16gb",
     "storage": "32gb"
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y mysql-client python3-pip unzip && pipx install terraform-local && pipx install gitleaks || true",
+  "remoteEnv": {
+    "AWS_ACCESS_KEY_ID": "test",
+    "AWS_SECRET_ACCESS_KEY": "test",
+    "AWS_DEFAULT_REGION": "us-east-1",
+    "AWS_ENDPOINT_URL": "http://localhost:4566"
   }
 }

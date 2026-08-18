@@ -1,0 +1,13 @@
+# Linux VM for this lab. LocalStack Docker-backed EC2 is unreachable from
+# macOS Docker Desktop (no bridge network). Run everything inside this VM.
+#
+# Start: limactl start --name=regional-health lima/regional-health.yaml
+minimumLimaVersion: "2.0.0"
+base:
+  - template:docker-rootful
+cpus: 4
+memory: "10GiB"
+disk: "32GiB"
+mounts:
+  - location: "/Users/bahati/Downloads/rehosting-capacity-lab"
+    writable: true
