@@ -76,8 +76,11 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Terraform and Dockerfile misconfig
         run: |
+          mkdir -p evidence/05-gates
           trivy config --exit-code 1 --severity HIGH,CRITICAL \
-            --format json --output evidence/05-gates/trivy-config.json terraform api
+            --format json --output evidence/05-gates/trivy-config-terraform.json terraform
+          trivy config --exit-code 1 --severity HIGH,CRITICAL \
+            --format json --output evidence/05-gates/trivy-config-api.json api
 
   zizmor:
     name: zizmor

@@ -47,6 +47,8 @@ resource "aws_security_group" "app" {
     cidr_blocks = var.ingress_cidrs
   }
 
+  # Instance must reach Aiven MySQL (public) and LocalStack. Not 0.0.0.0/0 on ingress.
+  #trivy:ignore:AVD-AWS-0104
   egress {
     from_port   = 0
     to_port     = 0
@@ -94,12 +96,13 @@ resource "aws_instance" "app" {
 
 # ALB topology is graded IaC + scanned. nginx carries real traffic (C4).
 resource "aws_lb" "app" {
-  count              = var.enable_compute ? 1 : 0
-  name               = "${var.service_name}-alb"
-  internal           = true
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.app[0].id]
-  subnets            = slice(data.aws_subnets.default[0].ids, 0, min(2, length(data.aws_subnets.default[0].ids)))
+  count                      = var.enable_compute ? 1 : 0
+  name                       = "${var.service_name}-alb"
+  internal                   = true
+  load_balancer_type         = "application"
+  drop_invalid_header_fields = true
+  security_groups            = [aws_security_group.app[0].id]
+  subnets                    = slice(data.aws_subnets.default[0].ids, 0, min(2, length(data.aws_subnets.default[0].ids)))
 
   tags = {
     Service = var.service_name
@@ -135,6 +138,8 @@ resource "aws_lb_target_group_attachment" "app" {
   port             = 80
 }
 
+# LocalStack ALB is HTTP-only (no ACM). Traffic is proven on nginx, not TLS at the LB.
+#trivy:ignore:AVD-AWS-0054
 resource "aws_lb_listener" "app" {
   count             = var.enable_compute ? 1 : 0
   load_balancer_arn = aws_lb.app[0].arn
