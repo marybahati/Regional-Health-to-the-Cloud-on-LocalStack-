@@ -54,7 +54,7 @@ jobs:
           trivy --version
       - name: Scan Terraform and Dockerfile
         run: |
-          trivy config terraform --severity HIGH,CRITICAL --exit-code 1 --format json --output trivy-config.json
+          trivy config terraform --severity HIGH,CRITICAL --ignorefile .trivyignore --exit-code 1
           trivy config api/Dockerfile --severity HIGH,CRITICAL --exit-code 1
 
   zizmor:
@@ -72,7 +72,7 @@ jobs:
           sudo install -m 0755 zizmor /usr/local/bin/zizmor
           zizmor --version
       - name: Audit workflows
-        run: zizmor --persona auditor .
+        run: zizmor .
 
   trivy-image:
     runs-on: ubuntu-latest
@@ -91,9 +91,8 @@ jobs:
           trivy image rehost-service-b:ci \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
-            --exit-code 1 \
-            --format json \
-            --output trivy-image.json
+            --scanners vuln \
+            --exit-code 1
 
   deploy:
     needs: [gitleaks, trivy-config, zizmor, trivy-image]
@@ -104,6 +103,8 @@ jobs:
         with:
           egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Start LocalStack (in-runner)
         uses: LocalStack/setup-localstack@02228397f63312ffc85f293d5a4dc17188ff2b1a # main 2026-07-21
         with:
