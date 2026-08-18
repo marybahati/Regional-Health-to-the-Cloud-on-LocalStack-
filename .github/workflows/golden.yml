@@ -133,7 +133,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     permissions:
       contents: read
-      id-token: write
     env:
       LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
       AWS_ACCESS_KEY_ID: test
