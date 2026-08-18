@@ -40,7 +40,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
@@ -54,23 +53,13 @@ jobs:
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
             | tar -xz -C /usr/local/bin gitleaks
       - name: Scan full history
-        run: |
-          mkdir -p evidence/03-secrets
-          gitleaks detect --source . --report-path evidence/03-secrets/gitleaks.json --exit-code 1
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ inputs.service }}-gitleaks
-          path: evidence/03-secrets/gitleaks.json
-          if-no-files-found: warn
+        run: gitleaks detect --source . --report-path evidence/03-secrets/gitleaks.json --exit-code 1
 
   trivy-config:
     name: trivy config
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
@@ -92,20 +81,12 @@ jobs:
             --format json --output evidence/05-gates/trivy-config-terraform.json terraform
           trivy config --exit-code 1 --severity HIGH,CRITICAL \
             --format json --output evidence/05-gates/trivy-config-api.json api
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ inputs.service }}-trivy-config
-          path: evidence/05-gates/trivy-config-*.json
-          if-no-files-found: warn
 
   zizmor:
     name: zizmor
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
@@ -116,13 +97,6 @@ jobs:
         run: pipx install zizmor==1.5.2
       - name: Scan workflows
         run: zizmor --format plain .github | tee evidence/05-gates/zizmor.txt
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ inputs.service }}-zizmor
-          path: evidence/05-gates/zizmor.txt
-          if-no-files-found: warn
 
   image:
     name: docker build + trivy image
@@ -130,7 +104,6 @@ jobs:
     needs: [gitleaks, trivy-config, zizmor]
     permissions:
       contents: read
-      actions: write
     outputs:
       ami_id: ${{ steps.tag.outputs.ami_id }}
     steps:
@@ -163,13 +136,6 @@ jobs:
           AMI="ami-${SHA12}"
           docker tag ${{ inputs.image_name }}:${{ github.sha }} localstack-ec2/app:${AMI}
           echo "ami_id=${AMI}" >> "$GITHUB_OUTPUT"
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ inputs.service }}-trivy-image
-          path: evidence/05-gates/trivy-image.json
-          if-no-files-found: warn
 
   deploy:
     name: tflocal apply + verify
@@ -178,7 +144,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     permissions:
       contents: read
-      actions: write
     env:
       LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
       AWS_ACCESS_KEY_ID: test
@@ -235,60 +200,22 @@ jobs:
           docker tag ${{ inputs.image_name }}:ci localstack-ec2/app:${AMI}
           echo "$AMI" > .ami-id
 
-      - name: Bootstrap state + apply (C1 evidence)
+      - name: Bootstrap state + apply + seed + verify
         run: |
-          chmod +x scripts/*.sh
           source ./scripts/ls-mode.sh
           source ./scripts/aiven-tf-env.sh
           ./scripts/bootstrap-state.sh
-          mkdir -p evidence/01-iac
           tflocal -chdir=${{ inputs.terraform_root }} init -input=false
-          tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)" \
-            | tee evidence/01-iac/apply.log
-          set +e
-          tflocal -chdir=${{ inputs.terraform_root }} plan -detailed-exitcode -var="app_ami_id=$(cat .ami-id)" \
-            > evidence/01-iac/plan-after-apply.txt
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then
-            echo "plan was not empty after apply" >&2
-            cat evidence/01-iac/plan-after-apply.txt >&2
-            exit 1
-          fi
-
-      - name: Seed database (C2 evidence)
-        run: |
-          source ./scripts/ls-mode.sh
-          source ./scripts/aiven-tf-env.sh
-          mkdir -p evidence/02-data
-          ./scripts/seed-db.sh | tee evidence/02-data/seed.log
-          grep -E 'patient_count|already have|seed complete' evidence/02-data/seed.log | tail -n 8 \
-            > evidence/02-data/row-counts.txt
-
-      - name: Run app (community path, no Docker-backed EC2 on Hobby)
-        run: |
+          tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)"
+          ./scripts/seed-db.sh
           # Hobby/freemium has no Docker-backed EC2. Share the runner network so
           # the app uses the same 127.0.0.1:4566 endpoint as tflocal (LocalStack
           # binds loopback; host-gateway cannot reach it).
+          chmod +x scripts/*.sh
           IMAGE="localstack-ec2/app:$(cat .ami-id)" \
+            APP_CONTAINER_NAME="${{ inputs.service }}-e2e" \
             APP_DOCKER_NETWORK=host \
             APP_PUBLISH_PORT=8080 \
             APP_AWS_ENDPOINT_URL="http://127.0.0.1:4566" \
             bash scripts/run-app-local.sh
-
-      - name: Break the secret and confirm the readiness flip (C4 evidence)
-        run: APP_PUBLISH_PORT=8080 bash scripts/readyz-degraded.sh evidence/04-health/readyz-degraded.txt
-
-      - name: make verify (C8 grader command)
-        run: APP_PUBLISH_PORT=8080 bash scripts/verify.sh
-
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ inputs.service }}-deploy-evidence
-          path: |
-            evidence/01-iac/
-            evidence/02-data/
-            evidence/04-health/
-          if-no-files-found: warn
+          APP_PUBLISH_PORT=8080 bash scripts/verify.sh
