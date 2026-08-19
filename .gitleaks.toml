@@ -5,6 +5,14 @@ useDefault = true
 
 [allowlist]
   description = "assignment evidence placeholders — not live credentials"
+  commits = [
+    # C5 gitleaks red-PR demo (evidence/05-gates/README.md): a deliberately
+    # committed fake key on demo/gitleaks-c5 (PR #9, closed unmerged). The
+    # branch could not be deleted (repository rule), and fetch-depth: 0
+    # pulls all remote branches into any full-history scan, so it stays
+    # reachable. Allowlisted by exact commit rather than by value.
+    "7085adf2f05904be5aa7c28c69d56b93ef674528",
+  ]
   paths = [
     '''evidence/''',
     '''iam/''',
