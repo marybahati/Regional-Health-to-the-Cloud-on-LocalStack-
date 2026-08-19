@@ -5,20 +5,20 @@ groups:
         expr: |
           histogram_quantile(
             0.95,
-            sum by (route, le) (rate(http_request_duration_seconds_bucket{service="service-a"}[2m]))
+            sum by (route, le) (rate(http_request_duration_seconds_bucket{job="capacity-api"}[2m]))
           ) > 0.5
           or
-          rate(mysql_rows_examined_total{service="service-a"}[2m]) > 100
+          rate(mysql_rows_examined_total{job="capacity-api"}[2m]) > 100
         for: 30s
         labels:
           severity: warning
           incident: "2201"
         annotations:
-          summary: "Service A p95 or rows-examined is high (2201)"
+          summary: "{{ $labels.service }} p95 or rows-examined is high (2201)"
           description: "Full-table search or oversized payload on {{ $labels.route }}."
 
       - alert: OPS-2202
-        expr: mysql_pool_queued{service="service-a"} > 0 and mysql_pool_in_use{service="service-a"} > 0
+        expr: mysql_pool_queued{job="capacity-api"} > 0 and mysql_pool_in_use{job="capacity-api"} > 0
         for: 20s
         labels:
           severity: warning
@@ -28,7 +28,7 @@ groups:
           description: "Pool waiters > 0. The DB can still be idle — the app is holding connections."
 
       - alert: OPS-2203
-        expr: histogram_quantile(0.95, rate(mysql_lock_wait_seconds_bucket{service="service-a"}[2m])) > 2
+        expr: histogram_quantile(0.95, rate(mysql_lock_wait_seconds_bucket{job="capacity-api"}[2m])) > 2
         for: 20s
         labels:
           severity: warning
@@ -38,11 +38,11 @@ groups:
           description: "ER_LOCK_WAIT_TIMEOUT / long FOR UPDATE on patients."
 
       - alert: OPS-2204
-        expr: up{job="capacity-api"} == 0 or process_resident_memory_bytes{service="service-a"} > 400000000
+        expr: up{job="capacity-api"} == 0 or process_resident_memory_bytes{job="capacity-api"} > 400000000
         for: 15s
         labels:
           severity: critical
           incident: "2204"
         annotations:
-          summary: "Service A down or approaching the 512Mi cgroup (2204)"
+          summary: "{{ $labels.service }} down or approaching the 512Mi cgroup (2204)"
           description: "Most deterministic injection: kill the process so up==0. Unbounded /export trips RSS."
