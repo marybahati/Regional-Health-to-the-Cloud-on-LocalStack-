@@ -18,6 +18,15 @@ test -n "$SECRET_ARN"
 
 MEM="${EC2_DOCKER_FLAGS:---memory=512m}"
 
+# C7 fault injection: forward these through if the caller set them, so an
+# incident can be triggered without hand-editing this script each time.
+EXTRA_ENV=()
+for v in FAULT_2201 FAULT_2202 FAULT_2203 FAULT_2204 LOCK_HOLD_MS; do
+  if [ -n "${!v:-}" ]; then
+    EXTRA_ENV+=(-e "$v=${!v}")
+  fi
+done
+
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 
 # Host network (CI): LocalStack's published port is 127.0.0.1:4566 on the runner.
@@ -35,6 +44,7 @@ if [ "$NETWORK" = "host" ]; then
     -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
     -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
     -e AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION" \
+    "${EXTRA_ENV[@]}" \
     "$IMAGE" >/dev/null
 else
   PUBLISH="${APP_PUBLISH_PORT:-18080}"
@@ -50,6 +60,7 @@ else
     -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
     -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
     -e AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION" \
+    "${EXTRA_ENV[@]}" \
     "$IMAGE" >/dev/null
 fi
 
