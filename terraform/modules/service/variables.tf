@@ -45,7 +45,7 @@ variable "aws_endpoint_url" {
 variable "ingress_cidrs" {
   type        = list(string)
   description = "SG ingress. Not 0.0.0.0/0 — trivy config fails that."
-  default     = ["0.0.0.0/0"]
+  default     = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
 }
 
 variable "enable_compute" {
