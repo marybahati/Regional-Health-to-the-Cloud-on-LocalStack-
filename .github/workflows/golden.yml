@@ -115,6 +115,14 @@ jobs:
         run: |
           mkdir -p evidence/05-gates
           zizmor --pedantic --format plain .github | tee evidence/05-gates/zizmor.txt
+          # zizmor classifies unpinned-uses as a help-tier finding, which is
+          # advisory only and never affects its own exit code (confirmed:
+          # --min-severity's floor is "unknown", not "help"). Enforce it here
+          # so an unpinned action actually blocks, per C5.
+          if grep -q 'unpinned-uses' evidence/05-gates/zizmor.txt; then
+            echo "::error::zizmor found an unpinned action reference (unpinned-uses)" >&2
+            exit 1
+          fi
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
