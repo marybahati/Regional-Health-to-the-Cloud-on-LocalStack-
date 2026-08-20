@@ -1,0 +1,127 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "title": "2201 — per-route p95",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (route, le) (rate(http_request_duration_seconds_bucket{service=\"service-b\"}[2m])))",
+          "legendFormat": "{{route}} p95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2201 — rows examined",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(mysql_rows_examined_total{service=\"service-b\"}[2m])",
+          "legendFormat": "rows/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "2202 — pool in use vs queued",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "mysql_pool_in_use{service=\"service-b\"}",
+          "legendFormat": "in use",
+          "refId": "A"
+        },
+        {
+          "expr": "mysql_pool_queued{service=\"service-b\"}",
+          "legendFormat": "queued",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "2203 — lock wait",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(mysql_lock_wait_seconds_bucket{service=\"service-b\"}[2m]))",
+          "legendFormat": "p95 lock wait",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "2204 — RSS vs 512Mi limit",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{service=\"service-b\"}",
+          "legendFormat": "rss",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "2204 — up / restarts",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "up{job=\"capacity-api\"}",
+          "legendFormat": "up",
+          "refId": "A"
+        },
+        {
+          "expr": "process_restart_total{service=\"service-b\"}",
+          "legendFormat": "starts",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Firing alerts",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)",
+          "legendFormat": "firing",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["service-b", "regional-health"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timezone": "browser",
+  "title": "Service B — four incidents",
+  "uid": "service-b-incidents",
+  "version": 1
+}

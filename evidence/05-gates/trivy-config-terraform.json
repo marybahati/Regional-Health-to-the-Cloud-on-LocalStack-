@@ -1,0 +1,54 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "0.74.0"
+  },
+  "ReportID": "01a01e39-8b31-7dec-996a-cdba9d55dccd",
+  "CreatedAt": "2026-08-20T11:11:22.801915934+03:00",
+  "ArtifactName": "terraform",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "bootstrap",
+      "Class": "config",
+      "Type": "terraform",
+      "MisconfSummary": {
+        "Successes": 25,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": "bootstrap/main.tf",
+      "Class": "config",
+      "Type": "terraform"
+    },
+    {
+      "Target": "environments/service-a",
+      "Class": "config",
+      "Type": "terraform",
+      "MisconfSummary": {
+        "Successes": 33,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": "environments/service-b",
+      "Class": "config",
+      "Type": "terraform",
+      "MisconfSummary": {
+        "Successes": 33,
+        "Failures": 0
+      }
+    },
+    {
+      "Target": "modules/data/main.tf",
+      "Class": "config",
+      "Type": "terraform"
+    },
+    {
+      "Target": "modules/service/main.tf",
+      "Class": "config",
+      "Type": "terraform"
+    }
+  ]
+}

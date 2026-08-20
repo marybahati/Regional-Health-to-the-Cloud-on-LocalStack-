@@ -63,7 +63,7 @@ const rssBytes = new client.Gauge({
   registers: [register],
 });
 
-const SERVICE = 'service-a';
+const SERVICE = process.env.SERVICE_NAME || 'service-a';
 processRestarts.inc({ service: SERVICE });
 
 function observePool(stats) {

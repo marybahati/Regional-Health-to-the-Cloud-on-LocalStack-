@@ -1,0 +1,40 @@
+# HELP service_a_process_resident_memory_bytes Resident memory size in bytes.
+# TYPE service_a_process_resident_memory_bytes gauge
+service_a_process_resident_memory_bytes 78266368
+# HELP http_request_duration_seconds HTTP request duration seconds
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.005",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.01",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.025",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.05",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.1",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.25",service="service-a",method="GET",route="/readyz",status_code="200"} 15
+http_request_duration_seconds_bucket{le="0.5",service="service-a",method="GET",route="/readyz",status_code="200"} 24
+http_request_duration_seconds_bucket{le="1",service="service-a",method="GET",route="/readyz",status_code="200"} 31
+http_request_duration_seconds_bucket{le="2",service="service-a",method="GET",route="/readyz",status_code="200"} 32
+http_request_duration_seconds_bucket{le="5",service="service-a",method="GET",route="/readyz",status_code="200"} 33
+http_request_duration_seconds_bucket{le="10",service="service-a",method="GET",route="/readyz",status_code="200"} 33
+http_request_duration_seconds_bucket{le="+Inf",service="service-a",method="GET",route="/readyz",status_code="200"} 33
+http_request_duration_seconds_sum{service="service-a",method="GET",route="/readyz",status_code="200"} 14.626787545999997
+http_request_duration_seconds_count{service="service-a",method="GET",route="/readyz",status_code="200"} 33
+http_request_duration_seconds_bucket{le="0.005",service="service-a",method="GET",route="/metrics",status_code="200"} 10
+http_request_duration_seconds_bucket{le="0.01",service="service-a",method="GET",route="/metrics",status_code="200"} 28
+http_request_duration_seconds_bucket{le="0.025",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="0.05",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="0.1",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="0.25",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="0.5",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="1",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="2",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="5",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="10",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="+Inf",service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_sum{service="service-a",method="GET",route="/metrics",status_code="200"} 0.1787796570000001
+http_request_duration_seconds_count{service="service-a",method="GET",route="/metrics",status_code="200"} 30
+http_request_duration_seconds_bucket{le="0.005",service="service-a",method="GET",route="/patients",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.01",service="service-a",method="GET",route="/patients",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.025",service="service-a",method="GET",route="/patients",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.05",service="service-a",method="GET",route="/patients",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.1",service="service-a",method="GET",route="/patients",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.25",service="service-a",method="GET",route="/patients",status_code="200"} 13
+http_request_duration_seconds_bucket{le="0.5",service="service-a",method="GET",route="/patients",status_code="200"} 777
