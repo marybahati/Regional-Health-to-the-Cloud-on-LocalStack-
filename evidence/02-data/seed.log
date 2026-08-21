@@ -1,0 +1,5 @@
+seeding 10000 patients into avnadmin@mysql-1a2eab65-warga-lab.d.aivencloud.com:18736/defaultdb (Aiven, TLS)
+already have 10000 patients (>= 10000); skip insert
+seed complete
+patient_count
+10000
