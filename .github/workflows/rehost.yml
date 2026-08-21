@@ -1,0 +1,53 @@
+name: Rehost
+
+# One workflow per push/PR: gates run once, then each service builds/deploys.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: platform gates
+    uses: ./.github/workflows/gates.yml
+
+  service-a:
+    name: service-a
+    needs: gates
+    uses: ./.github/workflows/golden.yml
+    secrets:
+      LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+      AIVEN_MYSQL_HOST: ${{ secrets.AIVEN_MYSQL_HOST }}
+      AIVEN_MYSQL_PORT: ${{ secrets.AIVEN_MYSQL_PORT }}
+      AIVEN_MYSQL_USER: ${{ secrets.AIVEN_MYSQL_USER }}
+      AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
+      AIVEN_MYSQL_DB: ${{ secrets.AIVEN_MYSQL_DB }}
+      AIVEN_MYSQL_CA: ${{ secrets.AIVEN_MYSQL_CA }}
+    with:
+      service: service-a
+      terraform_root: terraform/environments/service-a
+      dockerfile: api/Dockerfile
+      image_name: service-a
+
+  service-b:
+    name: service-b
+    needs: gates
+    uses: ./.github/workflows/golden.yml
+    secrets:
+      LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+      AIVEN_MYSQL_HOST: ${{ secrets.AIVEN_MYSQL_HOST }}
+      AIVEN_MYSQL_PORT: ${{ secrets.AIVEN_MYSQL_PORT }}
+      AIVEN_MYSQL_USER: ${{ secrets.AIVEN_MYSQL_USER }}
+      AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
+      AIVEN_MYSQL_DB: ${{ secrets.AIVEN_MYSQL_DB }}
+      AIVEN_MYSQL_CA: ${{ secrets.AIVEN_MYSQL_CA }}
+    with:
+      service: service-b
+      terraform_root: terraform/environments/service-b
+      dockerfile: api/Dockerfile
+      image_name: service-b
