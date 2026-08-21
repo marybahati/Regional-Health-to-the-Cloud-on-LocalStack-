@@ -65,6 +65,13 @@ jobs:
           trivy image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln \
             --format json --output evidence/05-gates/trivy-image.json \
             ${{ inputs.image_name }}:${{ github.sha }}
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ inputs.service }}-trivy-image
+          path: evidence/05-gates/trivy-image.json
+          if-no-files-found: warn
       - name: Tag as LocalStack AMI
         id: tag
         run: |
@@ -93,6 +100,9 @@ jobs:
       AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
       AIVEN_MYSQL_DB: ${{ secrets.AIVEN_MYSQL_DB }}
       AIVEN_MYSQL_CA: ${{ secrets.AIVEN_MYSQL_CA }}
+      SERVICE: ${{ inputs.service }}
+      ROOT: ${{ inputs.terraform_root }}
+      TF_STATE_BUCKET: rh-tfstate-${{ inputs.service }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
@@ -134,28 +144,72 @@ jobs:
           docker tag ${{ inputs.image_name }}:ci localstack-ec2/app:${AMI}
           echo "$AMI" > .ami-id
 
-      - name: Bootstrap state + apply + seed + verify
+      - name: Bootstrap state + apply (C1 evidence)
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
+          chmod +x scripts/*.sh
           source ./scripts/ls-mode.sh
           source ./scripts/aiven-tf-env.sh
-          TF_STATE_BUCKET="rh-tfstate-${{ inputs.service }}" ./scripts/bootstrap-state.sh
+          ./scripts/bootstrap-state.sh
+          mkdir -p evidence/01-iac
           tflocal -chdir=${{ inputs.terraform_root }} init -input=false
-          tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)"
-          ROOT="${{ inputs.terraform_root }}" ./scripts/seed-db.sh
+          tflocal -chdir=${{ inputs.terraform_root }} apply -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)" \
+            | tee evidence/01-iac/apply.log
+          set +e
+          tflocal -chdir=${{ inputs.terraform_root }} plan -detailed-exitcode -var="app_ami_id=$(cat .ami-id)" \
+            > evidence/01-iac/plan-after-apply.txt
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "plan was not empty after apply" >&2
+            cat evidence/01-iac/plan-after-apply.txt >&2
+            exit 1
+          fi
+
+      - name: Seed database (C2 evidence)
+        run: |
+          source ./scripts/ls-mode.sh
+          source ./scripts/aiven-tf-env.sh
+          mkdir -p evidence/02-data
+          ./scripts/seed-db.sh | tee evidence/02-data/seed.log
+          grep -E 'seeding|already have' evidence/02-data/seed.log > evidence/02-data/row-counts.txt
+
+      - name: Run app (community path, no Docker-backed EC2 on Hobby)
+        run: |
           # Hobby/freemium has no Docker-backed EC2. Share the runner network so
           # the app uses the same 127.0.0.1:4566 endpoint as tflocal (LocalStack
           # binds loopback; host-gateway cannot reach it).
-          chmod +x scripts/*.sh
-          ROOT="${{ inputs.terraform_root }}" \
-            SERVICE_NAME="${{ inputs.service }}" \
-            IMAGE="localstack-ec2/app:$(cat .ami-id)" \
+          IMAGE="localstack-ec2/app:$(cat .ami-id)" \
             APP_CONTAINER_NAME="${{ inputs.service }}-e2e" \
             APP_DOCKER_NETWORK=host \
             APP_PUBLISH_PORT=8080 \
             APP_AWS_ENDPOINT_URL="http://127.0.0.1:4566" \
             bash scripts/run-app-local.sh
-          ROOT="${{ inputs.terraform_root }}" \
-            SERVICE="${{ inputs.service }}" \
+
+      - name: Break the secret and confirm the readiness flip (C4 evidence)
+        run: |
+          APP_CONTAINER_NAME="${{ inputs.service }}-e2e" \
             APP_PUBLISH_PORT=8080 \
-            bash scripts/verify.sh
+            bash scripts/readyz-degraded.sh evidence/04-health/readyz-degraded.txt
+
+      - name: make verify (C8 grader command)
+        run: APP_PUBLISH_PORT=8080 bash scripts/verify.sh
+
+      - name: Destroy the stack from this run (C1 evidence)
+        if: always()
+        run: |
+          source ./scripts/ls-mode.sh
+          source ./scripts/aiven-tf-env.sh
+          docker rm -f "${{ inputs.service }}-e2e" >/dev/null 2>&1 || true
+          tflocal -chdir=${{ inputs.terraform_root }} destroy -auto-approve -input=false -var="app_ami_id=$(cat .ami-id)" \
+            | tee evidence/01-iac/destroy.log
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ inputs.service }}-deploy-evidence
+          path: |
+            evidence/01-iac/
+            evidence/02-data/
+            evidence/04-health/
+          if-no-files-found: warn

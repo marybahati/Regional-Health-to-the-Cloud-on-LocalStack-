@@ -14,7 +14,7 @@ groups:
           severity: warning
           incident: "2201"
         annotations:
-          summary: "Regional Health p95 or rows-examined is high (2201)"
+          summary: "{{ $labels.service }} p95 or rows-examined is high (2201)"
           description: "Full-table search or oversized payload on {{ $labels.route }}."
 
       - alert: OPS-2202
@@ -44,5 +44,5 @@ groups:
           severity: critical
           incident: "2204"
         annotations:
-          summary: "Regional Health down or approaching the 512Mi cgroup (2204)"
+          summary: "{{ $labels.service }} down or approaching the 512Mi cgroup (2204)"
           description: "Most deterministic injection: kill the process so up==0. Unbounded /export trips RSS."

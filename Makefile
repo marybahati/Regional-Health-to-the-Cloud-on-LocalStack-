@@ -9,6 +9,7 @@ COMPOSE_OBS := docker compose -f observability/docker-compose.yml
 IMAGE := $(SERVICE):local
 export ROOT
 export SERVICE
+export APP_CONTAINER_NAME ?= $(SERVICE)-e2e
 export AWS_ACCESS_KEY_ID ?= test
 export AWS_SECRET_ACCESS_KEY ?= test
 export AWS_DEFAULT_REGION ?= us-east-1
@@ -23,7 +24,7 @@ export EC2_DOCKER_FLAGS ?= --memory=512m
 help: ## Show targets.
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-up: ## Stand the stack up from zero on a clean LocalStack (SERVICE=service-a|service-b).
+up: ## Stand the $(SERVICE) stack up from zero on a clean LocalStack (SERVICE=service-a|service-b|service-c).
 	set -a; [ -f .env ] && . ./.env; set +a
 	@. scripts/ls-mode.sh
 	@. scripts/aiven-tf-env.sh
@@ -65,7 +66,7 @@ ami: ## Build, scan-friendly image, tag as localstack-ec2/app:ami-<sha12>.
 	  echo ami-$$SHA12 | tee .ami-id; \
 	  echo "tagged localstack-ec2/app:ami-$$SHA12"
 
-apply: ## tflocal apply the selected service root.
+apply: ## tflocal apply the $(SERVICE) root.
 	@. scripts/ls-mode.sh
 	@. scripts/aiven-tf-env.sh
 	tflocal -chdir=$(ROOT) init -input=false -reconfigure

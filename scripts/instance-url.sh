@@ -5,8 +5,8 @@ SERVICE_NAME="${SERVICE_NAME:-${SERVICE:-service-a}}"
 ROOT="${ROOT:-terraform/environments/${SERVICE_NAME}}"
 PORT="${APP_HTTP_PORT:-8080}"
 
-if [ -n "${SERVICE_A_URL:-}" ]; then
-  echo "${SERVICE_A_URL%/}"
+if [ -n "${SERVICE_URL:-}" ]; then
+  echo "${SERVICE_URL%/}"
   exit 0
 fi
 

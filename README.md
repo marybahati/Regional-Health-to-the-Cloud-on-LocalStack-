@@ -2,7 +2,15 @@
 
 **New here? Start at [docs/README.md](docs/README.md).** That folder is the beginner path: Linux vs VM, LocalStack, Aiven MySQL, GitHub secrets, first `make up`.
 
-This is the **group platform**. Service A is the first merged root. Service B (Warga) and Service C compose the same modules under `terraform/environments/`.
+This is the **group platform**. Each teammate's rehost composes the same group modules (`terraform/modules/data`, `terraform/modules/service`, the golden CI workflow) under `terraform/environments/`. Pick your service with `SERVICE`, default `service-a`:
+
+```bash
+make SERVICE=service-c up
+```
+
+- Service A: `terraform/environments/service-a`, CI in [.github/workflows/rehost-service-a.yml](.github/workflows/rehost-service-a.yml)
+- Service B: `terraform/environments/service-b`, CI in [.github/workflows/rehost-service-b.yml](.github/workflows/rehost-service-b.yml)
+- Service C: `terraform/environments/service-c`, CI in [.github/workflows/rehost-service-c.yml](.github/workflows/rehost-service-c.yml)
 
 ## What changed from the original brief
 
@@ -33,9 +41,10 @@ See [docs/first-run.md](docs/first-run.md).
 
 ```bash
 set -a && source .env && set +a
-make up                          # Service A (default)
-make up SERVICE=service-b        # Service B
-make verify
+make SERVICE=service-a up        # Service A (default)
+make SERVICE=service-b up        # Service B
+make SERVICE=service-c up        # Service C
+make SERVICE=service-c verify
 ```
 
 ## OIDC (E2)
@@ -51,5 +60,6 @@ Commented `configure-aws-credentials` is in `.github/workflows/golden.yml`. Trus
 - `terraform/modules/service` — EC2 + nginx user-data + ALB IaC
 - `terraform/environments/service-a` — Mary — Service A root
 - `terraform/environments/service-b` — Warga — Service B root
+- `terraform/environments/service-c` — Sharon — Service C root
 - `api/` — shared Regional Health app (`/healthz`, `/readyz`, Secrets Manager at boot)
-- `.github/workflows/golden.yml` — reusable pipeline; `rehost-service-a.yml` / `rehost-service-b.yml` call it
+- `.github/workflows/golden.yml` — reusable pipeline; `rehost-service-a.yml` / `rehost-service-b.yml` / `rehost-service-c.yml` call it
