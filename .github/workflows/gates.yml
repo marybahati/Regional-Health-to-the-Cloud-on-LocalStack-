@@ -26,6 +26,13 @@ jobs:
             | tar -xz -C /usr/local/bin gitleaks
       - name: Scan full history
         run: gitleaks detect --source . --report-path evidence/03-secrets/gitleaks.json --exit-code 1
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gitleaks
+          path: evidence/03-secrets/gitleaks.json
+          if-no-files-found: warn
 
   trivy-config:
     name: trivy config
@@ -52,6 +59,13 @@ jobs:
             --format json --output evidence/05-gates/trivy-config-terraform.json terraform
           trivy config --exit-code 1 --severity HIGH,CRITICAL \
             --format json --output evidence/05-gates/trivy-config-api.json api
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: trivy-config
+          path: evidence/05-gates/trivy-config-*.json
+          if-no-files-found: warn
 
   zizmor:
     name: zizmor
@@ -67,4 +81,13 @@ jobs:
       - name: Install zizmor
         run: pipx install zizmor==1.5.2
       - name: Scan workflows
-        run: zizmor --format plain .github | tee evidence/05-gates/zizmor.txt
+        run: |
+          mkdir -p evidence/05-gates
+          zizmor --format plain .github | tee evidence/05-gates/zizmor.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zizmor
+          path: evidence/05-gates/zizmor.txt
+          if-no-files-found: warn
