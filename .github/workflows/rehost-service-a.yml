@@ -1,17 +1,21 @@
 name: Rehost Service A
 
+# Manual single-service run. Automatic CI is .github/workflows/rehost.yml
+# (gates once, then all services).
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  gates:
+    name: platform gates
+    uses: ./.github/workflows/gates.yml
+
   service-a:
+    name: service-a
+    needs: gates
     uses: ./.github/workflows/golden.yml
     secrets:
       LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
