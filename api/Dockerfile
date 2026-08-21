@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 
 # Pin by digest. Bump only in a reviewed PR — never FROM ...:latest.
-FROM node:20.19.5-alpine3.22@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af020ffa39f0a770265435 AS deps
+FROM node:26.3.0-alpine3.22@sha256:c7932b9e5e337b0e733d6e16abc1b0e104759e8b05e59ed56586cce967d26dfe AS deps
 WORKDIR /app
 COPY api/package.json api/package-lock.json ./
 RUN npm ci --omit=dev
 
-FROM node:20.19.5-alpine3.22@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af020ffa39f0a770265435
+FROM node:26.3.0-alpine3.22@sha256:c7932b9e5e337b0e733d6e16abc1b0e104759e8b05e59ed56586cce967d26dfe
 RUN apk upgrade --no-cache \
  && apk add --no-cache nginx wget \
  && rm -rf /usr/local/lib/node_modules /opt/yarn* \
