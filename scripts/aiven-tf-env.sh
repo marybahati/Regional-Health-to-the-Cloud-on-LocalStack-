@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Map AIVEN_* from .env into TF_VAR_* so Terraform never sees a committed tfvars file.
 set -euo pipefail
+export AIVEN_MYSQL_DB="${AIVEN_MYSQL_DB:-${AIVEN_MYSQL_DATABASE:-defaultdb}}"
 if [ -z "${TF_VAR_db_host:-}" ] && [ -n "${AIVEN_MYSQL_HOST:-}" ]; then
   export TF_VAR_db_host="$AIVEN_MYSQL_HOST"
   export TF_VAR_db_port="${AIVEN_MYSQL_PORT:?set AIVEN_MYSQL_PORT}"
   export TF_VAR_db_username="${AIVEN_MYSQL_USER:?set AIVEN_MYSQL_USER}"
   export TF_VAR_db_password="${AIVEN_MYSQL_PASSWORD:?set AIVEN_MYSQL_PASSWORD}"
-  export TF_VAR_db_name="${AIVEN_MYSQL_DB:-defaultdb}"
+  export TF_VAR_db_name="${AIVEN_MYSQL_DB}"
 fi
 if [ -z "${TF_VAR_db_ca_cert:-}" ]; then
   if [ -n "${AIVEN_MYSQL_CA:-}" ]; then

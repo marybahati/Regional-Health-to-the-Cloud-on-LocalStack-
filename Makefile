@@ -7,6 +7,7 @@ ROOT := terraform/environments/$(SERVICE)
 COMPOSE_LS := docker compose -f observability/docker-compose.localstack.yml
 COMPOSE_OBS := docker compose -f observability/docker-compose.yml
 IMAGE := $(SERVICE):local
+export ROOT
 export SERVICE
 export APP_CONTAINER_NAME ?= $(SERVICE)-e2e
 export AWS_ACCESS_KEY_ID ?= test
@@ -23,7 +24,7 @@ export EC2_DOCKER_FLAGS ?= --memory=512m
 help: ## Show targets.
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-up: ## Stand the $(SERVICE) stack up from zero on a clean LocalStack.
+up: ## Stand the $(SERVICE) stack up from zero on a clean LocalStack (SERVICE=service-a|service-b|service-c).
 	set -a; [ -f .env ] && . ./.env; set +a
 	@. scripts/ls-mode.sh
 	@. scripts/aiven-tf-env.sh
@@ -32,7 +33,9 @@ up: ## Stand the $(SERVICE) stack up from zero on a clean LocalStack.
 	TF_STATE_BUCKET=rh-tfstate-$(SERVICE) ./scripts/bootstrap-state.sh
 	$(MAKE) apply
 	$(MAKE) seed
-	@if [ "$${TF_VAR_enable_compute:-true}" = "false" ]; then ./scripts/run-app-local.sh; fi
+	@if [ "$${TF_VAR_enable_compute:-true}" = "false" ]; then \
+	  ROOT=$(ROOT) APP_CONTAINER_NAME=$(SERVICE)-e2e IMAGE=$(IMAGE) SERVICE_NAME=$(SERVICE) ./scripts/run-app-local.sh; \
+	fi
 	$(MAKE) obs-up
 	$(MAKE) verify
 	@echo "make up complete — $(SERVICE) is green."
@@ -95,7 +98,7 @@ seed: ## Schema + 10k patients on Aiven (count is a terraform variable).
 obs-up: ## Prometheus / Grafana / Alertmanager (pre-wired + four incident rules).
 	@find observability -name "._*" -delete 2>/dev/null || true
 	@mkdir -p observability/targets
-	@HOSTPORT=$$(./scripts/instance-url.sh | sed -E 's#https?://##'); \
+	@HOSTPORT=$$(ROOT=$(ROOT) ./scripts/instance-url.sh | sed -E 's#https?://##'); \
 	  printf '[{"targets":["%s"],"labels":{"job":"capacity-api","service":"%s"}}]\n' "$$HOSTPORT" "$(SERVICE)" \
 	  > observability/targets/$(SERVICE).json
 	$(COMPOSE_OBS) up -d

@@ -1,0 +1,8 @@
+# LocalStack ELBv2 does not collect access logs.
+AVD-AWS-0052
+
+# Lab traffic is HTTP by design; nginx carries TLS-less local traffic.
+AVD-AWS-0054
+
+# Aiven MySQL and apt live on the public internet; egress cannot be VPC-only.
+AVD-AWS-0104

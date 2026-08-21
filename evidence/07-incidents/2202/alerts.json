@@ -1,0 +1,30 @@
+{
+  "incident": "2202",
+  "note": "OPS-2202 activated during FAULT_2202 + k6 pool/hold load. Condition flaps when holds end (for: 20s), so capture is mid-load pending with queued>0. metrics-snippet / k6.log corroborate pool saturation.",
+  "matching": [
+    {
+      "labels": {
+        "alertname": "OPS-2202",
+        "exported_service": "service-b",
+        "incident": "2202",
+        "instance": "127.0.0.1:18080",
+        "job": "capacity-api",
+        "service": "service-b",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "Pool waiters > 0. The DB can still be idle — the app is holding connections.",
+        "summary": "Connection pool saturated while work is held in the app (2202)"
+      },
+      "state": "pending",
+      "activeAt": "2026-08-20T08:29:25.101261237Z",
+      "value": "2e+01"
+    }
+  ],
+  "observed_during_load": {
+    "mysql_pool_queued": 20,
+    "mysql_pool_in_use": 10,
+    "fault": "FAULT_2202=1",
+    "k6": "load-tests/2202.js 40 VUs / 90s"
+  }
+}

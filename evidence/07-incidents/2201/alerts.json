@@ -1,0 +1,79 @@
+{
+  "incident": "2201",
+  "matching": [
+    {
+      "labels": {
+        "alertname": "OPS-2201",
+        "incident": "2201",
+        "route": "/readyz",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "Full-table search or oversized payload on /readyz.",
+        "summary": "Regional Health p95 or rows-examined is high (2201)"
+      },
+      "state": "firing",
+      "activeAt": "2026-08-20T08:10:00.101261237Z",
+      "value": "9.659090909090906e-01"
+    },
+    {
+      "labels": {
+        "alertname": "OPS-2201",
+        "incident": "2201",
+        "route": "/patients",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "Full-table search or oversized payload on /patients.",
+        "summary": "Regional Health p95 or rows-examined is high (2201)"
+      },
+      "state": "firing",
+      "activeAt": "2026-08-20T08:13:45.101261237Z",
+      "value": "8.551506955831163e-01"
+    },
+    {
+      "labels": {
+        "alertname": "OPS-2201",
+        "exported_service": "service-a",
+        "incident": "2201",
+        "instance": "127.0.0.1:18080",
+        "job": "capacity-api",
+        "route": "/patients",
+        "service": "service-a",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "Full-table search or oversized payload on /patients.",
+        "summary": "Regional Health p95 or rows-examined is high (2201)"
+      },
+      "state": "firing",
+      "activeAt": "2026-08-20T08:13:45.101261237Z",
+      "value": "8.096958333333333e+04"
+    },
+    {
+      "labels": {
+        "alertname": "OPS-2201",
+        "exported_service": "service-a",
+        "incident": "2201",
+        "instance": "127.0.0.1:18080",
+        "job": "capacity-api",
+        "route": "/patients",
+        "service": "service-b",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "Full-table search or oversized payload on /patients.",
+        "summary": "Regional Health p95 or rows-examined is high (2201)"
+      },
+      "state": "firing",
+      "activeAt": "2026-08-20T08:13:50.101261237Z",
+      "value": "7.41959090909091e+04"
+    }
+  ],
+  "all_names": [
+    "OPS-2201",
+    "OPS-2201",
+    "OPS-2201",
+    "OPS-2201"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "incident": "2203",
+  "matching": [
+    {
+      "labels": {
+        "alertname": "OPS-2203",
+        "exported_service": "service-a",
+        "incident": "2203",
+        "instance": "127.0.0.1:18080",
+        "job": "capacity-api",
+        "service": "service-b",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "ER_LOCK_WAIT_TIMEOUT / long FOR UPDATE on patients.",
+        "summary": "InnoDB lock wait (2203)"
+      },
+      "state": "firing",
+      "activeAt": "2026-08-20T08:18:00.101261237Z",
+      "value": "6e+01"
+    },
+    {
+      "labels": {
+        "alertname": "OPS-2203",
+        "exported_service": "service-a",
+        "incident": "2203",
+        "instance": "127.0.0.1:18080",
+        "job": "capacity-api",
+        "service": "service-a",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "ER_LOCK_WAIT_TIMEOUT / long FOR UPDATE on patients.",
+        "summary": "InnoDB lock wait (2203)"
+      },
+      "state": "firing",
+      "activeAt": "2026-08-20T08:18:00.101261237Z",
+      "value": "6e+01"
+    }
+  ],
+  "all_names": [
+    "OPS-2201",
+    "OPS-2203",
+    "OPS-2203"
+  ]
+}

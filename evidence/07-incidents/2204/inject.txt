@@ -1,0 +1,2 @@
+injected: pkill node inside service-b-e2e
+checking prometheus up / alerts

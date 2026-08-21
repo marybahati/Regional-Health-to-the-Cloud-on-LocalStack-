@@ -1,0 +1,39 @@
+{
+  "incident": "2204",
+  "matching": [
+    {
+      "labels": {
+        "alertname": "OPS-2204",
+        "incident": "2204",
+        "instance": "127.0.0.1:18080",
+        "job": "capacity-api",
+        "service": "service-b",
+        "severity": "critical"
+      },
+      "annotations": {
+        "description": "Most deterministic injection: kill the process so up==0. Unbounded /export trips RSS.",
+        "summary": "Regional Health down or approaching the 512Mi cgroup (2204)"
+      },
+      "state": "firing",
+      "activeAt": "2026-08-20T08:22:10.101261237Z",
+      "value": "0e+00"
+    },
+    {
+      "labels": {
+        "alertname": "OPS-2204",
+        "incident": "2204",
+        "instance": "127.0.0.1:18080",
+        "job": "capacity-api",
+        "service": "service-a",
+        "severity": "critical"
+      },
+      "annotations": {
+        "description": "Most deterministic injection: kill the process so up==0. Unbounded /export trips RSS.",
+        "summary": "Regional Health down or approaching the 512Mi cgroup (2204)"
+      },
+      "state": "pending",
+      "activeAt": "2026-08-20T08:22:15.101261237Z",
+      "value": "0e+00"
+    }
+  ]
+}

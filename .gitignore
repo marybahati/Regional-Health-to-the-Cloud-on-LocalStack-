@@ -1,6 +1,8 @@
 .DS_Store
 .env
 .env.local
+.env.*
+!.env.example
 *.tfstate
 *.tfstate.*
 *.tfplan
@@ -26,3 +28,4 @@ id_rsa
 id_ed25519
 terraform.tfvars
 secrets.json
+.ami-id

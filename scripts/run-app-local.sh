@@ -3,10 +3,10 @@
 # with DB_SECRET_ARN from Secrets Manager (never the password in the process list
 # from Terraform — the SDK fetches it at boot).
 set -euo pipefail
-SERVICE="${SERVICE:-service-a}"
-ROOT="${ROOT:-terraform/environments/$SERVICE}"
-NAME="${APP_CONTAINER_NAME:-$SERVICE-e2e}"
-IMAGE="${IMAGE:-$SERVICE:local}"
+SERVICE_NAME="${SERVICE_NAME:-${SERVICE:-service-a}}"
+ROOT="${ROOT:-terraform/environments/${SERVICE_NAME}}"
+NAME="${APP_CONTAINER_NAME:-${SERVICE_NAME}-e2e}"
+IMAGE="${IMAGE:-${SERVICE_NAME}:local}"
 NETWORK="${APP_DOCKER_NETWORK:-observability_default}"
 
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
@@ -38,7 +38,7 @@ if [ "$NETWORK" = "host" ]; then
   # shellcheck disable=SC2086
   docker run -d --name "$NAME" ${MEM} \
     --network host \
-    -e SERVICE_NAME="$SERVICE" \
+    -e SERVICE_NAME="$SERVICE_NAME" \
     -e DB_SECRET_ARN="$SECRET_ARN" \
     -e AWS_ENDPOINT_URL="$LS_ENDPOINT" \
     -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
@@ -54,7 +54,7 @@ else
   docker run -d --name "$NAME" ${MEM} \
     --network "$NETWORK" \
     -p "${PUBLISH}:8080" \
-    -e SERVICE_NAME="$SERVICE" \
+    -e SERVICE_NAME="$SERVICE_NAME" \
     -e DB_SECRET_ARN="$SECRET_ARN" \
     -e AWS_ENDPOINT_URL="$LS_ENDPOINT" \
     -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \

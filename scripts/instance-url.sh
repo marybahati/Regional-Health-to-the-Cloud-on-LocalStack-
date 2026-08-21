@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Resolve the Service A URL: Docker-backed EC2 (Pro) or published local container.
+# Resolve the service URL: Docker-backed EC2 (Pro) or published local container.
 set -euo pipefail
-SERVICE="${SERVICE:-service-a}"
-ROOT="${ROOT:-terraform/environments/$SERVICE}"
+SERVICE_NAME="${SERVICE_NAME:-${SERVICE:-service-a}}"
+ROOT="${ROOT:-terraform/environments/${SERVICE_NAME}}"
 PORT="${APP_HTTP_PORT:-8080}"
 
 if [ -n "${SERVICE_URL:-}" ]; then
@@ -28,12 +28,12 @@ if [ -n "$IID" ] && [ "$IID" != "null" ] && [ "$IID" != "None" ]; then
   fi
 fi
 
-CID="$(docker ps -q --filter "name=$SERVICE-e2e" | head -n1)"
+CID="$(docker ps -q --filter name="${SERVICE_NAME}-e2e" | head -n1)"
 if [ -n "$CID" ]; then
   echo "http://127.0.0.1:${APP_PUBLISH_PORT:-18080}"
   exit 0
 fi
 
-echo "could not find $SERVICE (no EC2 instance, no $SERVICE-e2e container)" >&2
+echo "could not find ${SERVICE_NAME} (no EC2 instance, no ${SERVICE_NAME}-e2e container)" >&2
 docker ps >&2
 exit 1
