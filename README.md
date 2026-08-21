@@ -1,8 +1,8 @@
-# Regional Health — Service A rehost (LocalStack + Aiven)
+# Regional Health to the Cloud on LocalStack — group-5
 
 **New here? Start at [docs/README.md](docs/README.md).** That folder is the beginner path: Linux vs VM, LocalStack, Aiven MySQL, GitHub secrets, first `make up`.
 
-This checkout is **Service A only**. Teammates rehost B and C on the same group modules.
+This is the **group platform**. Service A is the first merged root. Service B (Warga) and Service C compose the same modules under `terraform/environments/`.
 
 ## What changed from the original brief
 
@@ -33,7 +33,8 @@ See [docs/first-run.md](docs/first-run.md).
 
 ```bash
 set -a && source .env && set +a
-make up
+make up                          # Service A (default)
+make up SERVICE=service-b        # Service B
 make verify
 ```
 
@@ -48,5 +49,7 @@ Commented `configure-aws-credentials` is in `.github/workflows/golden.yml`. Trus
 - `docs/` — start here if you have never done this
 - `terraform/modules/data` — Secrets Manager envelope (Aiven details in, password never in git)
 - `terraform/modules/service` — EC2 + nginx user-data + ALB IaC
-- `terraform/environments/service-a` — Service A root
-- `api/` — Service A
+- `terraform/environments/service-a` — Mary — Service A root
+- `terraform/environments/service-b` — Warga — Service B root
+- `api/` — shared Regional Health app (`/healthz`, `/readyz`, Secrets Manager at boot)
+- `.github/workflows/golden.yml` — reusable pipeline; `rehost-service-a.yml` / `rehost-service-b.yml` call it

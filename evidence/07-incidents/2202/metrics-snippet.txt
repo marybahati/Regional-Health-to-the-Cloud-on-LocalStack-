@@ -1,0 +1,7 @@
+# Captured mid k6 load with FAULT_2202=1 (service-b)
+# HELP mysql_pool_in_use Connections currently checked out of the pool
+# TYPE mysql_pool_in_use gauge
+mysql_pool_in_use{service="service-b"} 10
+# HELP mysql_pool_queued Waiters queued for a pool connection
+# TYPE mysql_pool_queued gauge
+mysql_pool_queued{service="service-b"} 20

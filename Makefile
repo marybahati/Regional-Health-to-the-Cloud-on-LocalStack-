@@ -2,10 +2,13 @@ SHELL := /bin/bash
 .ONESHELL:
 .DEFAULT_GOAL := help
 export PATH := $(HOME)/.local/bin:$(PATH)
-ROOT := terraform/environments/service-a
+SERVICE ?= service-a
+ROOT := terraform/environments/$(SERVICE)
 COMPOSE_LS := docker compose -f observability/docker-compose.localstack.yml
 COMPOSE_OBS := docker compose -f observability/docker-compose.yml
-IMAGE := service-a:local
+IMAGE := $(SERVICE):local
+export ROOT
+export SERVICE
 export AWS_ACCESS_KEY_ID ?= test
 export AWS_SECRET_ACCESS_KEY ?= test
 export AWS_DEFAULT_REGION ?= us-east-1
@@ -20,18 +23,21 @@ export EC2_DOCKER_FLAGS ?= --memory=512m
 help: ## Show targets.
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-up: ## Stand the Service A stack up from zero on a clean LocalStack.
+up: ## Stand the stack up from zero on a clean LocalStack (SERVICE=service-a|service-b).
+	set -a; [ -f .env ] && . ./.env; set +a
 	@. scripts/ls-mode.sh
 	@. scripts/aiven-tf-env.sh
 	$(MAKE) localstack-up
 	$(MAKE) ami
-	./scripts/bootstrap-state.sh
+	TF_STATE_BUCKET=rh-tfstate-$(SERVICE) ./scripts/bootstrap-state.sh
 	$(MAKE) apply
 	$(MAKE) seed
-	@if [ "$${TF_VAR_enable_compute:-true}" = "false" ]; then ./scripts/run-app-local.sh; fi
+	@if [ "$${TF_VAR_enable_compute:-true}" = "false" ]; then \
+	  ROOT=$(ROOT) APP_CONTAINER_NAME=$(SERVICE)-e2e IMAGE=$(IMAGE) SERVICE_NAME=$(SERVICE) ./scripts/run-app-local.sh; \
+	fi
 	$(MAKE) obs-up
 	$(MAKE) verify
-	@echo "make up complete — Service A is green."
+	@echo "make up complete — $(SERVICE) is green."
 
 down: ## Destroy the stack and stop LocalStack.
 	-$(MAKE) destroy
@@ -59,7 +65,7 @@ ami: ## Build, scan-friendly image, tag as localstack-ec2/app:ami-<sha12>.
 	  echo ami-$$SHA12 | tee .ami-id; \
 	  echo "tagged localstack-ec2/app:ami-$$SHA12"
 
-apply: ## tflocal apply the Service A root.
+apply: ## tflocal apply the selected service root.
 	@. scripts/ls-mode.sh
 	@. scripts/aiven-tf-env.sh
 	tflocal -chdir=$(ROOT) init -input=false -reconfigure
@@ -79,7 +85,7 @@ plan-empty: ## Evidence: terraform plan after apply must be empty.
 destroy: ## Destroy and capture evidence/01-iac/destroy.log.
 	@. scripts/ls-mode.sh
 	@. scripts/aiven-tf-env.sh
-	-docker rm -f service-a-e2e >/dev/null 2>&1 || true
+	-docker rm -f $(SERVICE)-e2e >/dev/null 2>&1 || true
 	tflocal -chdir=$(ROOT) destroy -auto-approve -input=false -var="app_ami_id=$$(cat .ami-id)" | tee evidence/01-iac/destroy.log
 
 seed: ## Schema + 10k patients on Aiven (count is a terraform variable).
@@ -91,9 +97,9 @@ seed: ## Schema + 10k patients on Aiven (count is a terraform variable).
 obs-up: ## Prometheus / Grafana / Alertmanager (pre-wired + four incident rules).
 	@find observability -name "._*" -delete 2>/dev/null || true
 	@mkdir -p observability/targets
-	@HOSTPORT=$$(./scripts/instance-url.sh | sed -E 's#https?://##'); \
-	  printf '[{"targets":["%s"],"labels":{"job":"capacity-api","service":"service-a"}}]\n' "$$HOSTPORT" \
-	  > observability/targets/service-a.json
+	@HOSTPORT=$$(ROOT=$(ROOT) ./scripts/instance-url.sh | sed -E 's#https?://##'); \
+	  printf '[{"targets":["%s"],"labels":{"job":"capacity-api","service":"%s"}}]\n' "$$HOSTPORT" "$(SERVICE)" \
+	  > observability/targets/$(SERVICE).json
 	$(COMPOSE_OBS) up -d
 
 verify: ## Grader command. Non-zero if health, plan, secrets, or gitleaks fail.

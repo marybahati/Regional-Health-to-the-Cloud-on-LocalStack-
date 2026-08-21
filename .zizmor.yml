@@ -1,0 +1,8 @@
+# zizmor config — fail on unpinned actions; ignore auditor-only noise
+# that does not match this lab's in-runner LocalStack model.
+
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "*": hash-pin

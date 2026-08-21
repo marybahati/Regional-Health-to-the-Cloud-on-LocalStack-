@@ -5,7 +5,8 @@ ENDPOINT="${AWS_ENDPOINT_URL:-http://localhost:4566}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
-ROOT="${ROOT:-terraform/environments/service-a}"
+SERVICE_NAME="${SERVICE:-service-a}"
+ROOT="${ROOT:-terraform/environments/${SERVICE_NAME}}"
 OUT="${1:-evidence/04-health/readyz-degraded.txt}"
 mkdir -p "$(dirname "$OUT")"
 URL="$(scripts/instance-url.sh)"
@@ -19,7 +20,10 @@ app_container() {
   fi
   n="$(docker ps --format '{{.Names}}' | awk '/localstack-ec2/ {print; exit}')"
   if [ -z "$n" ]; then
-    n="$(docker ps --format '{{.Names}}' | awk '/service-a-e2e/ {print; exit}')"
+    n="$(docker ps --format '{{.Names}}' | awk -v s="${SERVICE_NAME}-e2e" '$0 ~ s {print; exit}')"
+  fi
+  if [ -z "$n" ]; then
+    n="$(docker ps --format '{{.Names}}' | awk '/service-a-e2e|service-b-e2e|service-c-e2e/ {print; exit}')"
   fi
   echo "$n"
 }
@@ -64,7 +68,15 @@ PY
   aws --endpoint-url "$ENDPOINT" secretsmanager put-secret-value \
     --secret-id "$SECRET_ARN" --secret-string "$GOOD" >/dev/null
   reload_secret
-  sleep 4
+  # nginx readiness watcher can lag a few seconds after the pool recovers
+  for i in 1 2 3 4 5 6 7 8; do
+    code="$(curl -sS -o /tmp/readyz-restore.json -w '%{http_code}' "$URL/readyz" || true)"
+    if [ "$code" = "200" ]; then
+      break
+    fi
+    sleep 2
+    reload_secret
+  done
   echo "GET $URL/readyz (expect 200)"
   curl -sS -w "\nHTTP %{http_code}\n" "$URL/readyz" || true
   sleep 3

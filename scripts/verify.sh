@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # C8: grader command. Non-zero if any check fails.
 set -euo pipefail
-ROOT="${ROOT:-terraform/environments/service-a}"
+ROOT="${ROOT:-terraform/environments/${SERVICE:-service-a}}"
 fail=0
 # shellcheck source=/dev/null
 source "$(cd "$(dirname "$0")" && pwd)/ls-mode.sh"

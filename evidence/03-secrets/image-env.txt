@@ -1,5 +1,6 @@
-AWS_ENDPOINT_URL=http://localstack:4566
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
 AWS_DEFAULT_REGION=us-east-1
-SERVICE_NAME=service-a
-DB_SECRET_ARN=arn:aws:secretsmanager:us-east-1:000000000000:secret:regional-health/service-a/db-NLgTyM
-YARN_VERSION=1.22.22
+SERVICE_NAME=service-b
+DB_SECRET_ARN=arn:aws:secretsmanager:us-east-1:000000000000:secret:regional-health/service-b/db-VzOfhH
+AWS_ENDPOINT_URL=http://localstack:4566

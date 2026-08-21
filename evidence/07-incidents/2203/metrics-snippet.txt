@@ -1,0 +1,40 @@
+# HELP service_a_process_resident_memory_bytes Resident memory size in bytes.
+# TYPE service_a_process_resident_memory_bytes gauge
+service_a_process_resident_memory_bytes 72527872
+# HELP http_request_duration_seconds HTTP request duration seconds
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.005",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.01",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.025",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.05",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.1",service="service-a",method="GET",route="/readyz",status_code="200"} 0
+http_request_duration_seconds_bucket{le="0.25",service="service-a",method="GET",route="/readyz",status_code="200"} 6
+http_request_duration_seconds_bucket{le="0.5",service="service-a",method="GET",route="/readyz",status_code="200"} 16
+http_request_duration_seconds_bucket{le="1",service="service-a",method="GET",route="/readyz",status_code="200"} 17
+http_request_duration_seconds_bucket{le="2",service="service-a",method="GET",route="/readyz",status_code="200"} 18
+http_request_duration_seconds_bucket{le="5",service="service-a",method="GET",route="/readyz",status_code="200"} 18
+http_request_duration_seconds_bucket{le="10",service="service-a",method="GET",route="/readyz",status_code="200"} 19
+http_request_duration_seconds_bucket{le="+Inf",service="service-a",method="GET",route="/readyz",status_code="200"} 19
+http_request_duration_seconds_sum{service="service-a",method="GET",route="/readyz",status_code="200"} 16.072703323
+http_request_duration_seconds_count{service="service-a",method="GET",route="/readyz",status_code="200"} 19
+http_request_duration_seconds_bucket{le="0.005",service="service-a",method="POST",route="/tx/lock",status_code="500"} 0
+http_request_duration_seconds_bucket{le="0.01",service="service-a",method="POST",route="/tx/lock",status_code="500"} 0
+http_request_duration_seconds_bucket{le="0.025",service="service-a",method="POST",route="/tx/lock",status_code="500"} 0
+http_request_duration_seconds_bucket{le="0.05",service="service-a",method="POST",route="/tx/lock",status_code="500"} 0
+http_request_duration_seconds_bucket{le="0.1",service="service-a",method="POST",route="/tx/lock",status_code="500"} 0
+http_request_duration_seconds_bucket{le="0.25",service="service-a",method="POST",route="/tx/lock",status_code="500"} 0
+http_request_duration_seconds_bucket{le="0.5",service="service-a",method="POST",route="/tx/lock",status_code="500"} 4
+http_request_duration_seconds_bucket{le="1",service="service-a",method="POST",route="/tx/lock",status_code="500"} 4
+http_request_duration_seconds_bucket{le="2",service="service-a",method="POST",route="/tx/lock",status_code="500"} 4
+http_request_duration_seconds_bucket{le="5",service="service-a",method="POST",route="/tx/lock",status_code="500"} 4
+http_request_duration_seconds_bucket{le="10",service="service-a",method="POST",route="/tx/lock",status_code="500"} 4
+http_request_duration_seconds_bucket{le="+Inf",service="service-a",method="POST",route="/tx/lock",status_code="500"} 4
+http_request_duration_seconds_sum{service="service-a",method="POST",route="/tx/lock",status_code="500"} 1.4560929489999999
+http_request_duration_seconds_count{service="service-a",method="POST",route="/tx/lock",status_code="500"} 4
+http_request_duration_seconds_bucket{le="0.005",service="service-a",method="GET",route="/metrics",status_code="200"} 1
+http_request_duration_seconds_bucket{le="0.01",service="service-a",method="GET",route="/metrics",status_code="200"} 15
+http_request_duration_seconds_bucket{le="0.025",service="service-a",method="GET",route="/metrics",status_code="200"} 16
+http_request_duration_seconds_bucket{le="0.05",service="service-a",method="GET",route="/metrics",status_code="200"} 16
+http_request_duration_seconds_bucket{le="0.1",service="service-a",method="GET",route="/metrics",status_code="200"} 16
+http_request_duration_seconds_bucket{le="0.25",service="service-a",method="GET",route="/metrics",status_code="200"} 16
+http_request_duration_seconds_bucket{le="0.5",service="service-a",method="GET",route="/metrics",status_code="200"} 16

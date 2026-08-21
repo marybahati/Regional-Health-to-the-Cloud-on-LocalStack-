@@ -1,0 +1,290 @@
+ INFO zizmor: skipping impostor-commit: can't run without a GitHub API token
+ INFO zizmor: skipping ref-confusion: can't run without a GitHub API token
+ INFO zizmor: skipping known-vulnerable-actions: can't run without a GitHub API token
+ INFO audit: zizmor: 🌈 completed .github/workflows/golden.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/rehost-service-a.yml
+ INFO audit: zizmor: 🌈 completed .github/workflows/rehost-service-b.yml
+warning[artipacked]: credential persistence through GitHub Actions artifacts
+  --> .github/workflows/golden.yml:48:9
+   |
+48 |         - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+   |  _________-
+49 | |         with:
+50 | |           fetch-depth: 0
+   | |________________________- does not set persist-credentials: false
+   |
+   = note: audit confidence → Low
+
+warning[artipacked]: credential persistence through GitHub Actions artifacts
+  --> .github/workflows/golden.yml:68:9
+   |
+68 |       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+   |         ------------------------------------------------------------------------ does not set persist-credentials: false
+   |
+   = note: audit confidence → Low
+
+warning[artipacked]: credential persistence through GitHub Actions artifacts
+  --> .github/workflows/golden.yml:95:9
+   |
+95 |       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+   |         ------------------------------------------------------------------------ does not set persist-credentials: false
+   |
+   = note: audit confidence → Low
+
+warning[artipacked]: credential persistence through GitHub Actions artifacts
+   --> .github/workflows/golden.yml:114:9
+    |
+114 |       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    |         ------------------------------------------------------------------------ does not set persist-credentials: false
+    |
+    = note: audit confidence → Low
+
+warning[artipacked]: credential persistence through GitHub Actions artifacts
+   --> .github/workflows/golden.yml:165:9
+    |
+165 |         - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    |  _________-
+166 | |
+...   |
+174 | |       #     # role-session-name comes from the job; trust policy sub is
+175 | |       #     # repo:marybahati/Regional-Health-to-the-Cloud-on-LocalStack-:ref:refs/heads/main
+    | |_____________________________________________________________________________________________- does not set persist-credentials: false
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:115:9
+    |
+115 |         - name: Build
+    |           ^^^^^^^^^^^ this step
+116 | /         run: |
+117 | |           test -f api/package-lock.json
+118 | |           docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:${{ github.sha }} .
+    | |__________________________________________________________________________________________________^ inputs.dockerfile may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:115:9
+    |
+115 |         - name: Build
+    |           ^^^^^^^^^^^ this step
+116 | /         run: |
+117 | |           test -f api/package-lock.json
+118 | |           docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:${{ github.sha }} .
+    | |__________________________________________________________________________________________________^ inputs.image_name may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:126:9
+    |
+126 |         - name: Image vulns (fail HIGH/CRITICAL)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+127 | /         run: |
+128 | |           mkdir -p evidence/05-gates
+129 | |           trivy image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln \
+130 | |             --format json --output evidence/05-gates/trivy-image.json \
+131 | |             ${{ inputs.image_name }}:${{ github.sha }}
+    | |______________________________________________________^ inputs.image_name may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:132:9
+    |
+132 |         - name: Tag as LocalStack AMI
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+133 |           id: tag
+134 | /         run: |
+135 | |           SHA12=$(echo "${{ github.sha }}" | cut -c1-12)
+136 | |           AMI="ami-${SHA12}"
+137 | |           docker tag ${{ inputs.image_name }}:${{ github.sha }} localstack-ec2/app:${AMI}
+138 | |           echo "ami_id=${AMI}" >> "$GITHUB_OUTPUT"
+    | |__________________________________________________^ inputs.image_name may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:194:9
+    |
+194 |         - name: Rebuild and tag AMI (image job artifacts are not the runner docker)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+195 | /         run: |
+196 | |           docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:ci .
+197 | |           AMI="${{ needs.image.outputs.ami_id }}"
+198 | |           docker tag ${{ inputs.image_name }}:ci localstack-ec2/app:${AMI}
+199 | |           echo "$AMI" > .ami-id
+    | |_______________________________^ inputs.dockerfile may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:194:9
+    |
+194 |         - name: Rebuild and tag AMI (image job artifacts are not the runner docker)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+195 | /         run: |
+196 | |           docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:ci .
+197 | |           AMI="${{ needs.image.outputs.ami_id }}"
+198 | |           docker tag ${{ inputs.image_name }}:ci localstack-ec2/app:${AMI}
+199 | |           echo "$AMI" > .ami-id
+    | |_______________________________^ inputs.image_name may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+info[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:194:9
+    |
+194 |         - name: Rebuild and tag AMI (image job artifacts are not the runner docker)
+    |           ------------------------------------------------------------------------- info: this step
+195 | /         run: |
+196 | |           docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:ci .
+197 | |           AMI="${{ needs.image.outputs.ami_id }}"
+198 | |           docker tag ${{ inputs.image_name }}:ci localstack-ec2/app:${AMI}
+199 | |           echo "$AMI" > .ami-id
+    | |_______________________________- info: needs.image.outputs.ami_id may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:194:9
+    |
+194 |         - name: Rebuild and tag AMI (image job artifacts are not the runner docker)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+195 | /         run: |
+196 | |           docker build -f ${{ inputs.dockerfile }} -t ${{ inputs.image_name }}:ci .
+197 | |           AMI="${{ needs.image.outputs.ami_id }}"
+198 | |           docker tag ${{ inputs.image_name }}:ci localstack-ec2/app:${AMI}
+199 | |           echo "$AMI" > .ami-id
+    | |_______________________________^ inputs.image_name may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.service may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.terraform_root may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.terraform_root may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.terraform_root may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.terraform_root may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.service may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.service may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.terraform_root may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+error[template-injection]: code injection via template expansion
+   --> .github/workflows/golden.yml:201:9
+    |
+201 |         - name: Bootstrap state + apply + seed + verify
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this step
+202 | /         run: |
+203 | |           export PATH="$HOME/.local/bin:$PATH"
+...   |
+224 | |             APP_PUBLISH_PORT=8080 \
+225 | |             bash scripts/verify.sh
+    | |___________________________________^ inputs.service may expand into attacker-controllable code
+    |
+    = note: audit confidence → Low
+
+22 findings: 0 unknown, 1 informational, 0 low, 5 medium, 16 high
